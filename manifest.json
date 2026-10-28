@@ -1,0 +1,9 @@
+{
+  "id": "thought-craft",
+  "name": "Thought Craft",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Capture ideas into Markdown and develop them from a live inbox.",
+  "author": "Thought Craft",
+  "isDesktopOnly": false
+}
