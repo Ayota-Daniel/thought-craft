@@ -13,6 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:obsidian": "npm run build && node scripts/smoke-obsidian.mjs",
+    "test:obsidian:m1": "npm run build && node scripts/smoke-m1.mjs",
+    "format": "prettier --write",
     "check": "npm run build && npm run lint && npm test",
     "install:dev": "node scripts/install-dev.mjs"
   },
@@ -32,6 +34,7 @@
     "eslint": "^9.39.1",
     "obsidian": "^1.8.7",
     "playwright-core": "^1.64.1",
+    "prettier": "^3.9.10",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.2",
     "vitest": "^3.2.4"

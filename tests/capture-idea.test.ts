@@ -9,10 +9,20 @@ describe('capture use case', () => {
   });
   it('passes an intact multiline body and new UUID to the writer', async () => {
     const content = ' First line\n\n---\nbs_id: this is body text\nSecond line  ';
-    const writer = { createIdea: vi.fn(async (idea: NewIdea) => ({
-      id: idea.id, type: 'idea' as const, title: 'First line', workspaceId: idea.workspaceId,
-      status: 'inbox' as const, filePath: 'Ideas/First line.md', createdAt: idea.createdAt, updatedAt: idea.createdAt,
-    })) };
+    const writer = {
+      createIdea: vi.fn(async (idea: NewIdea) => ({
+        id: idea.id,
+        type: 'idea' as const,
+        title: 'First line',
+        workspaceId: idea.workspaceId,
+        status: 'inbox' as const,
+        filePath: 'Ideas/First line.md',
+        createdAt: idea.createdAt,
+        updatedAt: idea.createdAt,
+        properties: [],
+        propertyIssues: [],
+      })),
+    };
     const a = await captureIdea(content, 'default', writer);
     const b = await captureIdea(content, 'default', writer);
     expect(a.id).toMatch(/^[a-f\d-]{36}$/);
