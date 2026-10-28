@@ -274,14 +274,14 @@ try {
   await writeFile(join(vault, 'Missing ID.md'), externalContent.replace(/^bs_id:.*\n/m, ''));
   await writeFile(
     join(vault, 'Unsupported.md'),
-    externalContent.replace('bs_type: idea', 'bs_type: quest'),
+    externalContent.replace('bs_type: idea', 'bs_type: invalid type!'),
   );
   await writeFile(join(vault, 'Broken YAML.md'), '---\nbs_id: [broken\n---\nKeep this body.\n');
   await entityCount(3);
   await delay(500);
   await entityCount(3);
   checks.push(
-    'External creation indexes valid ideas, ignores missing IDs, unsupported types and malformed YAML.',
+    'External creation indexes valid ideas, ignores missing IDs, malformed type identifiers and malformed YAML.',
   );
 
   await evaluate(
@@ -293,13 +293,17 @@ try {
   await capture('A thought in a custom workspace');
   await entityCount(4);
   const settingsData = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
-  assert.deepEqual(settingsData, { entitiesFolder: 'Custom/Ideas', defaultWorkspace: 'novel' });
+  assert.equal(settingsData.entitiesFolder, 'Custom/Ideas');
+  assert.equal(settingsData.defaultWorkspace, 'novel');
+  assert.equal(settingsData.configVersion, 3);
+  assert.equal(settingsData.entityTypes.length, 5);
+  assert.equal(settingsData.entities, undefined);
   assert.match(
     await readFile(join(vault, 'Custom/Ideas/A thought in a custom workspace.md'), 'utf8'),
     /bs_workspace: novel/,
   );
   checks.push(
-    'Settings persist via plugin data; only the two settings are stored there, while entities remain in Markdown.',
+    'Settings persist via plugin data; capture settings and global schema definitions are stored there, while entities remain in Markdown.',
   );
 
   await unlink(join(vault, duplicate.filePath));
@@ -320,7 +324,10 @@ try {
   );
   assert.equal(restored.entities.find((e) => e.id === first.id)?.filePath, moved);
   assert.equal(restored.entities.find((e) => e.id === externalId)?.workspaceId, 'external');
-  assert.deepEqual(restored.settings, settingsData);
+  assert.deepEqual(restored.settings, {
+    entitiesFolder: settingsData.entitiesFolder,
+    defaultWorkspace: settingsData.defaultWorkspace,
+  });
   checks.push(
     'Restarting the real Obsidian process rebuilds the correct Inbox and restores settings and stable UUIDs.',
   );

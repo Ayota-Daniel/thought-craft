@@ -15,6 +15,7 @@ export interface Entity {
   readonly updatedAt: string;
   readonly properties: readonly CustomProperty[];
   readonly propertyIssues: readonly string[];
+  readonly schemaValues: unknown;
   readonly relations: readonly EntityRelation[];
   readonly relationIssues: readonly string[];
 }

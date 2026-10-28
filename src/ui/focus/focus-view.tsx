@@ -15,6 +15,8 @@ import { isRecord } from '../../shared/record';
 import { AddPropertyModal } from './add-property-modal';
 import { PropertyInspector } from './property-inspector';
 import { ENTITY_TYPES } from '../../domain/entity-type';
+import type { EntityTypeRegistry } from '../../application/entity-type-registry';
+import type { EntitySchemaValueWriter } from '../../application/entity-schema-values';
 import type { EntityRelationWriter } from '../../application/entity-relations';
 import type { CreateFromInput } from '../../application/create-entity';
 import { AddRelationModal } from './add-relation-modal';
@@ -24,6 +26,7 @@ import { Relationships } from './relationships';
 export const FOCUS_VIEW_TYPE = 'thought-craft-focus';
 
 export class FocusView extends ItemView {
+  private unsubscribeTypes: (() => void) | null = null;
   private entityId: string | null = null;
   private headingEl: HTMLElement | null = null;
   private bodyEl: HTMLElement | null = null;
@@ -39,11 +42,13 @@ export class FocusView extends ItemView {
   constructor(
     leaf: WorkspaceLeaf,
     private index: EntityIndex,
-    private propertyWriter: EntityPropertyWriter & EntityRelationWriter,
+    private propertyWriter: EntityPropertyWriter & EntityRelationWriter & EntitySchemaValueWriter,
     private showInbox: () => void,
     private openMarkdown: (entityId: string) => void,
     private openFocus: (entityId: string) => void,
     private createFromEntity: (sourceEntityId: string, input: CreateFromInput) => Promise<void>,
+    private registry: EntityTypeRegistry,
+    private manageType: (typeId: string) => void,
   ) {
     super(leaf);
   }
@@ -58,7 +63,7 @@ export class FocusView extends ItemView {
 
   getIcon(): string {
     const entity = this.entityId ? this.index.getById(this.entityId) : undefined;
-    return ENTITY_TYPES[entity?.type ?? 'idea'].icon;
+    return ENTITY_TYPES[entity?.type ?? 'idea']?.icon ?? 'file-text';
   }
 
   getState(): Record<string, unknown> {
@@ -98,6 +103,9 @@ export class FocusView extends ItemView {
       attr: { 'aria-label': 'Entity properties' },
     });
     this.inspectorRoot = createRoot(inspector);
+    this.unsubscribeTypes = this.registry.subscribe(() => {
+      void this.refreshEntity();
+    });
     this.unsubscribe = this.index.subscribe(() => {
       void this.refreshEntity();
     });
@@ -120,6 +128,8 @@ export class FocusView extends ItemView {
 
   disposeFocus(): void {
     this.renderVersion += 1;
+    this.unsubscribeTypes?.();
+    this.unsubscribeTypes = null;
     this.unsubscribe?.();
     this.unsubscribe = null;
     this.propertyModal?.close();
@@ -156,16 +166,19 @@ export class FocusView extends ItemView {
     }
 
     this.headingEl.setText(entity.title);
-    this.typeLabelEl?.setText(`Thought Craft · ${ENTITY_TYPES[entity.type].label}`);
+    this.typeLabelEl?.setText(`Thought Craft · ${this.registry.label(entity.type)}`);
     this.inspectorRoot.render(
       <PropertyInspector
         key={entity.id}
         entity={entity}
         writer={this.propertyWriter}
+        registry={this.registry}
+        manageType={() => this.manageType(entity.type)}
         addProperty={() => this.showPropertyDialog(entity)}
       >
         <Relationships
           entity={entity}
+          registry={this.registry}
           outgoing={this.index.getOutgoingRelations(entity.id)}
           incoming={this.index.getIncomingRelations(entity.id)}
           writer={this.propertyWriter}
@@ -241,6 +254,7 @@ export class FocusView extends ItemView {
       this.app,
       entity.id,
       this.index,
+      this.registry,
       (input) => this.propertyWriter.addRelation(entity.id, input),
       () => {
         this.relationModal = null;
@@ -258,6 +272,7 @@ export class FocusView extends ItemView {
     this.createModal = new CreateFromModal(
       this.app,
       entity,
+      this.registry,
       (input) => this.createFromEntity(entity.id, input),
       () => {
         this.createModal = null;

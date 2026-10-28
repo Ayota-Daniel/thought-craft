@@ -51,6 +51,7 @@ export function entityFromFrontmatter(value: unknown, filePath: string): Entity 
     updatedAt: value.bs_updated as string,
     properties: parsedProperties.properties,
     propertyIssues: parsedProperties.issues,
+    schemaValues: value.bs_schema_values,
     relations: parsedRelations.relations,
     relationIssues: parsedRelations.issues,
   });

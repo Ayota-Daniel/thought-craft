@@ -8,6 +8,10 @@ import {
   type NewRelation,
 } from '../domain/entity-relation';
 import { isEntityType } from '../domain/entity-type';
+import type { EntityTypeRegistry } from '../application/entity-type-registry';
+import type { EntitySchemaValueWriter } from '../application/entity-schema-values';
+import type { ResolvedSchemaField } from '../domain/property-schema';
+import { writeSchemaValue } from './schema-value-mapper';
 import { isUuid, isTimestamp } from '../shared/metadata-validation';
 import { folderForEntity } from '../shared/entity-path';
 import { addEntityRelation, removeEntityRelation, serializeRelation } from './relation-mapper';
@@ -21,7 +25,7 @@ import { entityFromFrontmatter, writeEntityFrontmatter } from './frontmatter-map
 import { addCustomProperty, removeCustomProperty, updateCustomProperty } from './property-mapper';
 
 export class ObsidianEntityRepository
-  implements EntityWriter, EntityPropertyWriter, EntityRelationWriter
+  implements EntityWriter, EntityPropertyWriter, EntityRelationWriter, EntitySchemaValueWriter
 {
   private active = true;
   private revisions = new Map<string, number>();
@@ -32,6 +36,7 @@ export class ObsidianEntityRepository
     private app: App,
     private index: EntityIndex,
     private getSettings: () => BrainstormSettings,
+    private registry: EntityTypeRegistry,
   ) {}
 
   dispose(): void {
@@ -107,6 +112,8 @@ export class ObsidianEntityRepository
   async createEntity(input: NewEntity): Promise<Entity> {
     if (
       !isEntityType(input.type) ||
+      !this.registry.get(input.type) ||
+      this.registry.get(input.type)?.retired ||
       !isUuid(input.id) ||
       !isTimestamp(input.createdAt) ||
       !input.title.trim() ||
@@ -123,7 +130,13 @@ export class ObsidianEntityRepository
       validatedRelations.push(relation);
     }
 
-    const folder = normalizePath(folderForEntity(input.type, this.getSettings().entitiesFolder));
+    const folder = normalizePath(
+      folderForEntity(
+        input.type,
+        this.getSettings().entitiesFolder,
+        this.registry.get(input.type)?.folderName,
+      ),
+    );
     await this.ensureFolder(folder);
     const stem = sanitizeFilename(input.title);
     let file: TFile | undefined;
@@ -160,6 +173,7 @@ export class ObsidianEntityRepository
       propertyIssues: [],
       relations: Object.freeze([...validatedRelations]),
       relationIssues: [],
+      schemaValues: undefined,
     };
     try {
       await this.app.fileManager.processFrontMatter(
@@ -186,6 +200,23 @@ export class ObsidianEntityRepository
       void this.syncFile(file);
     }
     return entity;
+  }
+
+  setSchemaValue(
+    entityId: string,
+    expected: ResolvedSchemaField,
+    value: PropertyValue | undefined,
+  ): Promise<void> {
+    return this.mutateMetadata(entityId, (frontmatter) => {
+      const definition = this.registry.get(String(frontmatter.bs_type));
+      const schema = definition?.properties.find(
+        (property) => property.key === expected.schema.key,
+      );
+      if (!schema) {
+        throw new Error('The property schema is unavailable.');
+      }
+      writeSchemaValue(frontmatter, expected, schema, value);
+    });
   }
 
   addProperty(entityId: string, input: NewProperty): Promise<void> {

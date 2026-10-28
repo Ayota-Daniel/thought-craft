@@ -1,16 +1,18 @@
 import { Modal, type App } from 'obsidian';
-import { ENTITY_TYPES } from '../../domain/entity-type';
+import type { EntityTypeRegistry } from '../../application/entity-type-registry';
 import { RELATION_TYPES, type NewRelation, type RelationType } from '../../domain/entity-relation';
 import type { EntityIndex } from '../../infrastructure/entity-index';
 
 export class AddRelationModal extends Modal {
   private unsubscribe: (() => void) | null = null;
   private pending = false;
+  private unsubscribeTypes: (() => void) | null = null;
 
   constructor(
     app: App,
     private sourceEntityId: string,
     private index: EntityIndex,
+    private registry: EntityTypeRegistry,
     private addRelation: (input: NewRelation) => Promise<void>,
     private onClosed: () => void,
   ) {
@@ -54,7 +56,7 @@ export class AddRelationModal extends Modal {
         .getAll()
         .filter((entity) => {
           const searchableText =
-            `${entity.title} ${ENTITY_TYPES[entity.type].label}`.toLocaleLowerCase();
+            `${entity.title} ${this.registry.label(entity.type)}`.toLocaleLowerCase();
           return entity.id !== this.sourceEntityId && searchableText.includes(query);
         })
         .sort(
@@ -70,7 +72,7 @@ export class AddRelationModal extends Modal {
       });
       for (const entity of targets) {
         targetInput.createEl('option', {
-          text: `${entity.title} — ${ENTITY_TYPES[entity.type].label} · ${entity.id.slice(0, 8)}`,
+          text: `${entity.title} — ${this.registry.label(entity.type)} · ${entity.id.slice(0, 8)}`,
           value: entity.id,
         });
       }
@@ -85,6 +87,7 @@ export class AddRelationModal extends Modal {
     targetInput.addEventListener('change', () => {
       submitButton.disabled = this.pending || !targetInput.value;
     });
+    this.unsubscribeTypes = this.registry.subscribe(updateTargets);
     this.unsubscribe = this.index.subscribe(updateTargets);
     updateTargets();
 
@@ -120,6 +123,8 @@ export class AddRelationModal extends Modal {
   }
 
   onClose(): void {
+    this.unsubscribeTypes?.();
+    this.unsubscribeTypes = null;
     this.unsubscribe?.();
     this.unsubscribe = null;
     this.contentEl.empty();

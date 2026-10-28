@@ -17,7 +17,8 @@
     "test:obsidian:m2": "npm run build && node scripts/smoke-m2.mjs",
     "format": "prettier --write",
     "check": "npm run build && npm run lint && npm test",
-    "install:dev": "node scripts/install-dev.mjs"
+    "install:dev": "node scripts/install-dev.mjs",
+    "test:obsidian:m3": "npm run build && node scripts/smoke-m3.mjs"
   },
   "engines": {
     "node": ">=22"

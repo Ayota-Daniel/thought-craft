@@ -1,14 +1,16 @@
 import { Modal, type App } from 'obsidian';
 import type { Entity } from '../../domain/entity';
-import { ENTITY_TYPES, type EntityType } from '../../domain/entity-type';
+import type { EntityTypeRegistry } from '../../application/entity-type-registry';
 import type { CreateFromInput } from '../../application/create-entity';
 
 export class CreateFromModal extends Modal {
   private pending = false;
+  private unsubscribe: (() => void) | null = null;
 
   constructor(
     app: App,
     private source: Entity,
+    private registry: EntityTypeRegistry,
     private createEntity: (input: CreateFromInput) => Promise<void>,
     private onClosed: () => void,
   ) {
@@ -16,15 +18,24 @@ export class CreateFromModal extends Modal {
   }
 
   onOpen(): void {
-    this.titleEl.setText(`Create from this ${ENTITY_TYPES[this.source.type].label.toLowerCase()}`);
+    this.titleEl.setText(`Create from this ${this.registry.label(this.source.type).toLowerCase()}`);
     this.modalEl.addClass('tc-create-from-modal');
     const form = this.contentEl.createEl('form', { cls: 'tc-property-form' });
     const typeLabel = form.createEl('label', { text: 'Entity type' });
     const typeInput = typeLabel.createEl('select', { attr: { 'aria-label': 'Entity type' } });
 
-    for (const [type, presentation] of Object.entries(ENTITY_TYPES)) {
-      typeInput.createEl('option', { value: type, text: presentation.label });
-    }
+    const refreshTypes = () => {
+      const selected = typeInput.value;
+      typeInput.empty();
+      for (const type of this.registry.getActive()) {
+        typeInput.createEl('option', { value: type.id, text: type.label });
+      }
+      if (this.registry.getActive().some((type) => type.id === selected)) {
+        typeInput.value = selected;
+      }
+    };
+    refreshTypes();
+    this.unsubscribe = this.registry.subscribe(refreshTypes);
 
     const titleLabel = form.createEl('label', { text: 'Title' });
     const titleInput = titleLabel.createEl('input', {
@@ -55,7 +66,7 @@ export class CreateFromModal extends Modal {
       }
 
       const input: CreateFromInput = {
-        type: typeInput.value as EntityType,
+        type: typeInput.value,
         title: titleInput.value,
         content: contentInput.value,
       };
@@ -80,6 +91,8 @@ export class CreateFromModal extends Modal {
   }
 
   onClose(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
     this.contentEl.empty();
     this.onClosed();
   }

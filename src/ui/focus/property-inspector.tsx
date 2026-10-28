@@ -1,3 +1,7 @@
+import type { EntityTypeRegistry } from '../../application/entity-type-registry';
+import type { EntitySchemaValueWriter } from '../../application/entity-schema-values';
+import { resolveSchemaField, schemaEditorProperty } from '../../domain/property-schema';
+import { isRecord } from '../../shared/record';
 import type { EntityPropertyWriter } from '../../application/entity-properties';
 import type { Entity } from '../../domain/entity';
 import { PropertyEditor } from './property-editor';
@@ -5,7 +9,9 @@ import type { ReactNode } from 'react';
 
 interface PropertyInspectorProps {
   entity: Entity;
-  writer: EntityPropertyWriter;
+  writer: EntityPropertyWriter & EntitySchemaValueWriter;
+  registry: EntityTypeRegistry;
+  manageType: () => void;
   addProperty: () => void;
   children?: ReactNode;
 }
@@ -15,10 +21,77 @@ export function PropertyInspector({
   writer,
   addProperty,
   children,
+  registry,
+  manageType,
 }: PropertyInspectorProps) {
+  const definition = registry.get(entity.type);
+  const activeSchemas = definition?.properties.filter((schema) => !schema.retired) ?? [];
+  const storedValues = isRecord(entity.schemaValues) ? entity.schemaValues : {};
+  const orphanedKeys = Object.keys(storedValues).filter(
+    (key) => !activeSchemas.some((schema) => schema.key === key),
+  );
   return (
     <div className="tc-inspector-content">
-      <h2>Properties</h2>
+      <section aria-label="Type properties" className="tc-type-properties">
+        <h2>Type properties</h2>
+        {!definition && (
+          <p className="tc-property-issues">
+            Unknown Entity Type: {entity.type}. Stored data remains available below and in Markdown.
+          </p>
+        )}
+        {definition?.retired && (
+          <p className="tc-inspector-hint">Retired type · existing notes remain editable.</p>
+        )}
+        {activeSchemas.length === 0 && (
+          <p className="tc-inspector-hint">No reusable properties defined.</p>
+        )}
+        {activeSchemas.map((schema) => {
+          const field = resolveSchemaField(schema, entity.schemaValues);
+          const property = schemaEditorProperty(schema, field.value ?? '');
+          return (
+            <PropertyEditor
+              key={schema.key}
+              property={property}
+              context={field}
+              update={(_expected, value, context) =>
+                writer.setSchemaValue(entity.id, context ?? field, value)
+              }
+              remove={(_expected, context) =>
+                writer.setSchemaValue(entity.id, context ?? field, undefined)
+              }
+            />
+          );
+        })}
+        {definition && (
+          <button className="tc-add-property" onClick={manageType}>
+            Manage {definition.label} properties
+          </button>
+        )}
+        {entity.schemaValues !== undefined && !isRecord(entity.schemaValues) && (
+          <p className="tc-property-issues">
+            Malformed bs_schema_values: {JSON.stringify(entity.schemaValues)}. Repair it in Markdown
+            before saving fields.
+          </p>
+        )}
+        {orphanedKeys.length > 0 && (
+          <details className="tc-orphan-values">
+            <summary>Stored values without an active schema ({orphanedKeys.length})</summary>
+            <dl>
+              {orphanedKeys.map((key) => (
+                <div key={key}>
+                  <dt>{key}</dt>
+                  <dd>{JSON.stringify(storedValues[key])}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="tc-inspector-hint">
+              Retired or unknown properties are preserved. Restore their schema or edit the Markdown
+              note.
+            </p>
+          </details>
+        )}
+      </section>
+      <h2>Local properties</h2>
       {entity.properties.length === 0 && (
         <p className="tc-inspector-hint">Add the details that matter to this entity.</p>
       )}
@@ -32,8 +105,8 @@ export function PropertyInspector({
         />
       ))}
 
-      <button className="tc-add-property" onClick={addProperty}>
-        + Add property
+      <button className="tc-add-property" aria-label="+ Add property" onClick={addProperty}>
+        + Add local property
       </button>
 
       {entity.propertyIssues.length > 0 && (

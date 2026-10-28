@@ -1,13 +1,19 @@
+import type { ResolvedSchemaField } from '../../domain/property-schema';
 import { useEffect, useRef, useState } from 'react';
 import type { CustomProperty, PropertyValue } from '../../domain/custom-property';
 
 interface PropertyEditorProps {
   property: CustomProperty;
-  update: (expected: CustomProperty, value: PropertyValue) => Promise<void>;
-  remove: (expected: CustomProperty) => Promise<void>;
+  update: (
+    expected: CustomProperty,
+    value: PropertyValue,
+    context?: ResolvedSchemaField,
+  ) => Promise<void>;
+  remove: (expected: CustomProperty, context?: ResolvedSchemaField) => Promise<void>;
+  context?: ResolvedSchemaField;
 }
 
-export function PropertyEditor({ property, update, remove }: PropertyEditorProps) {
+export function PropertyEditor({ property, update, remove, context }: PropertyEditorProps) {
   const [draft, setDraft] = useState(String(property.value));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -15,7 +21,11 @@ export function PropertyEditor({ property, update, remove }: PropertyEditorProps
   const [confirmRemoval, setConfirmRemoval] = useState(false);
   const editingVersion = useRef<CustomProperty | null>(null);
   const operationPending = useRef(false);
-  const draftId = `tc-property-${property.key}`;
+  const draftId = `tc-${context ? 'schema' : 'property'}-${property.key}`;
+  const removalVersion = useRef<{ property: CustomProperty; context?: ResolvedSchemaField } | null>(
+    null,
+  );
+  const editingContext = useRef<ResolvedSchemaField | undefined>(undefined);
 
   useEffect(() => {
     if (!dirty) {
@@ -36,6 +46,7 @@ export function PropertyEditor({ property, update, remove }: PropertyEditorProps
       await operation();
       setDirty(false);
       editingVersion.current = null;
+      editingContext.current = undefined;
     } catch (operationError) {
       setError(
         operationError instanceof Error
@@ -64,7 +75,7 @@ export function PropertyEditor({ property, update, remove }: PropertyEditorProps
       value = Number(draft);
     }
 
-    await runOperation(() => update(expected, value));
+    await runOperation(() => update(expected, value, editingContext.current ?? context));
   }
 
   function discardDraft(): void {
@@ -72,42 +83,72 @@ export function PropertyEditor({ property, update, remove }: PropertyEditorProps
     setDirty(false);
     setError('');
     editingVersion.current = null;
+    editingContext.current = undefined;
   }
 
   function changeDraft(value: string): void {
     if (!dirty) {
       editingVersion.current = property;
+      editingContext.current = context;
     }
     setDraft(value);
     setDirty(true);
   }
 
   return (
-    <div className="tc-property-row" data-property-key={property.key}>
+    <div
+      className="tc-property-row"
+      data-property-key={context ? undefined : property.key}
+      data-schema-key={context ? property.key : undefined}
+    >
       <div className="tc-property-heading">
         <label htmlFor={draftId}>{property.label}</label>
         <button
           className="tc-property-remove"
-          aria-label={`Remove ${property.label}`}
-          disabled={saving}
-          onClick={() => setConfirmRemoval(true)}
+          aria-label={`${context ? 'Reset' : 'Remove'} ${property.label}`}
+          disabled={saving || (Boolean(context) && context?.source !== 'explicit')}
+          onClick={() => {
+            removalVersion.current = { property, context };
+            setConfirmRemoval(true);
+          }}
         >
-          Remove
+          {context ? 'Reset' : 'Remove'}
         </button>
       </div>
 
+      {context && (
+        <p className="tc-inspector-hint" id={`${draftId}-status`} role="status">
+          {context.source === 'missing'
+            ? '— Missing'
+            : context.source === 'default'
+              ? 'Schema default'
+              : 'Explicit value'}
+          {context.issue
+            ? ` · Incompatible: ${JSON.stringify(context.value)}. ${context.issue}`
+            : ''}
+        </p>
+      )}
       <div className="tc-property-control">
         {property.type === 'boolean' && (
           <input
             id={draftId}
+            aria-invalid={Boolean(context?.issue)}
+            aria-describedby={context ? `${draftId}-status` : undefined}
             type="checkbox"
             checked={draft === 'true'}
+            ref={(input) => {
+              if (input) {
+                input.indeterminate = Boolean(
+                  context && (context.source === 'missing' || context.issue),
+                );
+              }
+            }}
             disabled={saving}
             onChange={(event) => {
               const value = event.target.checked;
               setDraft(String(value));
               setDirty(true);
-              void runOperation(() => update(property, value));
+              void runOperation(() => update(property, value, context));
             }}
           />
         )}
@@ -115,15 +156,22 @@ export function PropertyEditor({ property, update, remove }: PropertyEditorProps
         {property.type === 'select' && (
           <select
             id={draftId}
+            aria-invalid={Boolean(context?.issue)}
+            aria-describedby={context ? `${draftId}-status` : undefined}
             value={draft}
             disabled={saving}
             onChange={(event) => {
               const value = event.target.value;
               setDraft(value);
               setDirty(true);
-              void runOperation(() => update(property, value));
+              void runOperation(() => update(property, value, context));
             }}
           >
+            {!property.options.includes(draft) && (
+              <option value={draft} disabled>
+                {context?.source === 'missing' ? '— Choose a value' : `Incompatible: ${draft}`}
+              </option>
+            )}
             {property.options.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -142,8 +190,10 @@ export function PropertyEditor({ property, update, remove }: PropertyEditorProps
               max={property.type === 'rating' ? property.max : undefined}
               step={property.type === 'rating' ? 1 : 'any'}
               disabled={saving}
-              aria-invalid={Boolean(error)}
-              aria-describedby={error ? `${draftId}-error` : undefined}
+              aria-invalid={Boolean(error || context?.issue)}
+              aria-describedby={
+                error ? `${draftId}-error` : context ? `${draftId}-status` : undefined
+              }
               onChange={(event) => changeDraft(event.target.value)}
               onBlur={() => {
                 void commitDraft();
@@ -187,14 +237,22 @@ export function PropertyEditor({ property, update, remove }: PropertyEditorProps
             }
           }}
         >
-          <span>Remove this property?</span>
+          <span>
+            {context
+              ? 'Clear the explicit value and use the schema default?'
+              : 'Remove this property?'}
+          </span>
           <button
             disabled={saving}
             onClick={() => {
-              void runOperation(() => remove(property));
+              const expected = removalVersion.current ?? { property, context };
+              void runOperation(async () => {
+                await remove(expected.property, expected.context);
+                setConfirmRemoval(false);
+              });
             }}
           >
-            Remove property
+            {context ? 'Reset value' : 'Remove property'}
           </button>
           <button onClick={() => setConfirmRemoval(false)}>Cancel</button>
         </div>

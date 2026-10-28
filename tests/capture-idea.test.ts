@@ -24,6 +24,7 @@ describe('capture use case', () => {
         propertyIssues: [],
         relations: [],
         relationIssues: [],
+        schemaValues: undefined,
       })),
     };
     const a = await captureIdea(content, 'default', writer);

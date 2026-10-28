@@ -1,3 +1,4 @@
+import type { EntityTypeRegistry } from './entity-type-registry';
 import type { Entity } from '../domain/entity';
 import { isEntityType, type EntityType } from '../domain/entity-type';
 import { validateRelation, type EntityRelation } from '../domain/entity-relation';
@@ -27,12 +28,18 @@ export async function createFrom(
   input: CreateFromInput,
   index: { getById(id: string): Entity | undefined },
   writer: EntityWriter,
+  registry: EntityTypeRegistry,
 ): Promise<Entity> {
   const source = index.getById(sourceEntityId);
   if (!source) {
     throw new Error('The source entity is no longer available.');
   }
-  if (!isEntityType(input.type) || !input.title.trim()) {
+  if (
+    !isEntityType(input.type) ||
+    !registry.get(input.type) ||
+    registry.get(input.type)?.retired ||
+    !input.title.trim()
+  ) {
     throw new Error('Choose an entity type and enter a title.');
   }
 

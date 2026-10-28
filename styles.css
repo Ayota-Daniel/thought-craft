@@ -460,3 +460,99 @@ button.tc-property-remove:hover {
     }
   }
 }
+
+/* Global schema configuration stays separate from the content-focused inspector. */
+.tc-type-manager {
+  width: min(880px, 92vw);
+}
+.tc-type-manager .modal-content {
+  max-height: 75vh;
+  overflow: auto;
+}
+.tc-types-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 32px;
+}
+.tc-types-layout nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  border-right: 1px solid var(--background-modifier-border);
+  padding-right: 20px;
+}
+.tc-types-layout nav button {
+  text-align: left;
+  box-shadow: none;
+  background: transparent;
+  height: auto;
+  padding: 9px;
+  white-space: normal;
+}
+.tc-types-layout nav button[aria-current] {
+  color: var(--text-accent);
+  background: var(--background-secondary);
+}
+.tc-type-detail {
+  min-width: 0;
+}
+.tc-type-detail h2 {
+  margin-top: 18px;
+}
+.tc-type-detail h3 {
+  margin-top: 28px;
+}
+.tc-schema-list {
+  list-style: none;
+  padding: 0;
+}
+.tc-schema-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 8px 0;
+  gap: 12px;
+}
+.tc-schema-list button {
+  box-shadow: none;
+  background: transparent;
+  padding-left: 0;
+}
+.tc-schema-list span {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.tc-schema-form {
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: 20px;
+}
+.tc-property-form .tc-inline-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tc-type-properties {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.tc-orphan-values {
+  margin-top: 16px;
+  font-size: var(--font-ui-small);
+  overflow-wrap: anywhere;
+}
+.tc-orphan-values dd {
+  margin: 4px 0 12px;
+  color: var(--text-muted);
+}
+@media (max-width: 650px) {
+  .tc-types-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .tc-types-layout nav {
+    border: 0;
+  }
+}

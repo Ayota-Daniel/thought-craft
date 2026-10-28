@@ -15,6 +15,7 @@ const idea: Entity = {
   propertyIssues: [],
   relations: [],
   relationIssues: [],
+  schemaValues: undefined,
 };
 
 describe('EntityIndex', () => {

@@ -1,3 +1,4 @@
+import { EntityTypeRegistry } from '../src/application/entity-type-registry';
 import { describe, expect, it, vi } from 'vitest';
 import { createFrom, type NewEntity } from '../src/application/create-entity';
 import { ENTITY_TYPES, type EntityType } from '../src/domain/entity-type';
@@ -29,7 +30,7 @@ describe('Create From', () => {
             workspaceId: input.workspaceId,
             createdAt: input.createdAt,
             updatedAt: input.createdAt,
-            filePath: `${ENTITY_TYPES[input.type].folder}/${input.title}.md`,
+            filePath: `${ENTITY_TYPES[input.type]?.folder}/${input.title}.md`,
             relations: input.relations,
           });
           index.upsert(created);
@@ -42,6 +43,7 @@ describe('Create From', () => {
         { type: targetType, title: 'Derived thought', content: 'Optional initial body' },
         index,
         writer,
+        new EntityTypeRegistry(),
       );
 
       expect(created.id).not.toBe(source.id);
@@ -69,13 +71,13 @@ describe('Create From', () => {
     const writer = { createEntity: vi.fn() };
     const input = { type: 'character' as const, title: 'Noah', content: '' };
 
-    await expect(createFrom(source.id, input, index, writer)).rejects.toThrow(
-      'no longer available',
-    );
+    await expect(
+      createFrom(source.id, input, index, writer, new EntityTypeRegistry()),
+    ).rejects.toThrow('no longer available');
     index.upsert(source);
-    await expect(createFrom(source.id, { ...input, title: ' ' }, index, writer)).rejects.toThrow(
-      'title',
-    );
+    await expect(
+      createFrom(source.id, { ...input, title: ' ' }, index, writer, new EntityTypeRegistry()),
+    ).rejects.toThrow('title');
     expect(writer.createEntity).not.toHaveBeenCalled();
   });
 });

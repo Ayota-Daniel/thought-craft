@@ -22,6 +22,7 @@ export function createTestEntity(overrides: Partial<Entity> = {}): Entity {
     propertyIssues: [],
     relations: [],
     relationIssues: [],
+    schemaValues: undefined,
     ...overrides,
   };
 }

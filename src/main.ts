@@ -1,3 +1,7 @@
+import type { EntityTypeDefinition } from './domain/entity-type';
+import { EntityTypeRegistry } from './application/entity-type-registry';
+import { TypeManagerModal } from './ui/types/type-manager-modal';
+import { isRecord } from './shared/record';
 import { Notice, Plugin, TFile } from 'obsidian';
 import { captureIdea } from './application/capture-idea';
 import { openEntity } from './application/open-entity';
@@ -13,13 +17,37 @@ import { createFrom } from './application/create-entity';
 export default class ThoughtCraftPlugin extends Plugin {
   settings: BrainstormSettings = { ...DEFAULT_SETTINGS };
   readonly entityIndex = new EntityIndex();
+  registry!: EntityTypeRegistry;
+  private configWrites: Promise<void> = Promise.resolve();
+  private typeManager: TypeManagerModal | null = null;
   private repository!: ObsidianEntityRepository;
   private disposed = false;
   private captureModal: QuickCaptureModal | null = null;
 
   async onload(): Promise<void> {
-    this.settings = settingsFromData(await this.loadData());
-    this.repository = new ObsidianEntityRepository(this.app, this.entityIndex, () => this.settings);
+    const data: unknown = await this.loadData();
+    this.settings = settingsFromData(data);
+    const rawTypes = isRecord(data) ? data.entityTypes : undefined;
+    this.registry = new EntityTypeRegistry(rawTypes, (types) => this.persistTypes(types));
+    if (this.registry.issues.length) {
+      new Notice(
+        'Some entity type definitions could not be read. Their configuration is preserved.',
+      );
+    }
+    const ideaFolderName = this.settings.entitiesFolder.split('/').pop() ?? 'Ideas';
+    if (this.registry.get('idea')?.folderName !== ideaFolderName) {
+      await this.registry.updateType('idea', { folderName: ideaFolderName });
+    }
+    await this.saveConfiguration({
+      ...this.settings,
+      entityTypes: [...this.registry.getAll(), ...this.registry.unreadableDefinitions],
+    });
+    this.repository = new ObsidianEntityRepository(
+      this.app,
+      this.entityIndex,
+      () => this.settings,
+      this.registry,
+    );
     this.register(() => this.repository.dispose());
     this.registerView(INBOX_VIEW_TYPE, (leaf) => {
       const view = new InboxView(
@@ -53,12 +81,20 @@ export default class ThoughtCraftPlugin extends Plugin {
             input,
             this.entityIndex,
             this.repository,
+            this.registry,
           );
           await this.openEntityFocus(created.id);
         },
+        this.registry,
+        (typeId) => this.openTypeManager(typeId),
       );
       this.register(() => view.disposeFocus());
       return view;
+    });
+    this.addCommand({
+      id: 'manage-entity-types',
+      name: 'Manage entity types',
+      callback: () => this.openTypeManager(),
     });
     this.addCommand({
       id: 'capture-idea',
@@ -117,11 +153,68 @@ export default class ThoughtCraftPlugin extends Plugin {
   onunload(): void {
     this.disposed = true;
     this.captureModal?.close();
+    this.typeManager?.close();
   }
 
   async updateSettings(settings: BrainstormSettings): Promise<void> {
-    await this.saveData(settings);
-    this.settings = settings;
+    await this.saveConfiguration(settings);
+    const folderName = this.settings.entitiesFolder.split('/').pop() ?? 'Ideas';
+    if (this.registry.get('idea')?.folderName !== folderName) {
+      await this.registry.updateType('idea', { folderName });
+    }
+  }
+
+  openTypeManager(typeId?: string): void {
+    if (this.typeManager) {
+      return;
+    }
+    this.typeManager = new TypeManagerModal(this.app, this.registry, typeId, () => {
+      this.typeManager = null;
+    });
+    this.typeManager.open();
+  }
+
+  private async persistTypes(types: readonly EntityTypeDefinition[]): Promise<void> {
+    const idea = types.find((type) => type.id === 'idea');
+    const ideaFolderChanged = idea?.folderName !== this.registry.get('idea')?.folderName;
+    await this.saveConfiguration((existing) => {
+      const changes: Record<string, unknown> = {
+        entityTypes: [...types, ...this.registry.unreadableDefinitions],
+      };
+      if (idea && ideaFolderChanged) {
+        const parts = settingsFromData(existing).entitiesFolder.split('/');
+        parts.pop();
+        parts.push(idea.folderName);
+        changes.entitiesFolder = parts.join('/');
+      }
+      return changes;
+    });
+  }
+
+  private saveConfiguration(
+    changes:
+      | Record<string, unknown>
+      | BrainstormSettings
+      | ((existing: Record<string, unknown>) => Record<string, unknown>),
+  ): Promise<void> {
+    const operation = this.configWrites
+      .catch(() => undefined)
+      .then(async () => {
+        const raw: unknown = await this.loadData();
+        const existing = isRecord(raw) ? raw : {};
+        if (typeof existing.configVersion === 'number' && existing.configVersion > 3) {
+          throw new Error('This configuration was created by a newer Thought Craft version.');
+        }
+        const next = {
+          ...existing,
+          ...(typeof changes === 'function' ? changes(existing) : changes),
+          configVersion: 3,
+        };
+        await this.saveData(next);
+        this.settings = settingsFromData(next);
+      });
+    this.configWrites = operation;
+    return operation;
   }
 
   private openCapture(): void {

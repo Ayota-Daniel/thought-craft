@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import type { Entity } from '../../domain/entity';
-import { ENTITY_TYPES } from '../../domain/entity-type';
+import type { EntityTypeRegistry } from '../../application/entity-type-registry';
 import { RELATION_TYPES } from '../../domain/entity-relation';
 import type { EntityRelationWriter } from '../../application/entity-relations';
 import type { IncomingRelation, OutgoingRelation } from '../../infrastructure/entity-index';
 
 interface RelationshipsProps {
   entity: Entity;
+  registry: EntityTypeRegistry;
   outgoing: readonly OutgoingRelation[];
   incoming: readonly IncomingRelation[];
   writer: EntityRelationWriter;
@@ -16,11 +17,13 @@ interface RelationshipsProps {
 
 function OutgoingRelationRow({
   edge,
+  registry,
   sourceId,
   writer,
   openEntity,
 }: {
   edge: OutgoingRelation;
+  registry: EntityTypeRegistry;
   sourceId: string;
   writer: EntityRelationWriter;
   openEntity: (entityId: string) => void;
@@ -74,7 +77,7 @@ function OutgoingRelationRow({
       <span className="tc-relation-type">
         {RELATION_TYPES[edge.relation.type]}
         {edge.target
-          ? ` · ${ENTITY_TYPES[edge.target.type].label}`
+          ? ` · ${registry.label(edge.target.type)}`
           : ` · ${edge.relation.targetEntityId.slice(0, 8)}`}
       </span>
       {confirmRemoval && (
@@ -109,6 +112,7 @@ function OutgoingRelationRow({
 
 export function Relationships({
   entity,
+  registry,
   outgoing,
   incoming,
   writer,
@@ -125,6 +129,7 @@ export function Relationships({
           <OutgoingRelationRow
             key={edge.relation.id}
             edge={edge}
+            registry={registry}
             sourceId={entity.id}
             writer={writer}
             openEntity={openEntity}
@@ -143,7 +148,7 @@ export function Relationships({
               {source.title}
             </button>
             <span className="tc-relation-type">
-              {RELATION_TYPES[relation.type]} · {ENTITY_TYPES[source.type].label}
+              {RELATION_TYPES[relation.type]} · {registry.label(source.type)}
             </span>
           </li>
         ))}

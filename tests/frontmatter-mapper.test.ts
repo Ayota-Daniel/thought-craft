@@ -31,9 +31,9 @@ describe('frontmatter mapper', () => {
     });
     expect(entityFromFrontmatter(valid, 'Moved/New name.md')?.id).toBe(valid.bs_id);
   });
-  it('requires an id and rejects unsupported types', () => {
+  it('requires an id and rejects malformed type identifiers', () => {
     expect(entityFromFrontmatter({ ...valid, bs_id: undefined }, 'x.md')).toBeNull();
-    expect(entityFromFrontmatter({ ...valid, bs_type: 'quest' }, 'x.md')).toBeNull();
+    expect(entityFromFrontmatter({ ...valid, bs_type: 'invalid type!' }, 'x.md')).toBeNull();
   });
   it.each([null, undefined, [], 'yaml', 3])('rejects non-object metadata: %s', (value) => {
     expect(entityFromFrontmatter(value, 'x.md')).toBeNull();
