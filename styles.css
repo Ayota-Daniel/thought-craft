@@ -436,13 +436,21 @@ button.tc-property-remove:hover {
   color: var(--text-normal);
   overflow-wrap: anywhere;
 }
+/* Keep native focus scrolling clear of the modal viewport's edges. */
+.modal-content:has(.tc-property-form) {
+  scroll-padding: var(--size-4-2, 8px);
+}
+/* Reserve room for focus outlines inside scrollable modal content. */
 .tc-property-form {
   display: grid;
   gap: 18px;
+  min-width: 0;
+  padding: var(--size-4-1, 4px);
 }
 .tc-property-form label {
   display: grid;
   gap: 8px;
+  min-width: 0;
   font-size: var(--font-ui-small);
 }
 .tc-property-form label[hidden] {
@@ -451,10 +459,26 @@ button.tc-property-remove:hover {
 .tc-property-form input,
 .tc-property-form select,
 .tc-property-form textarea {
+  box-sizing: border-box;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.tc-property-form fieldset {
+  min-width: 0;
+  margin: 0;
+}
+/* Native form controls keep an accent outline for mouse and keyboard focus. */
+.tc-property-form :is(input, select, textarea):focus,
+.tc-property-form :focus-visible,
+.tc-types-layout :focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 1px;
+  box-shadow: none;
 }
 .tc-property-form-footer {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
   margin-top: 6px;
@@ -667,8 +691,7 @@ button.tc-property-remove:hover {
   flex: 0 0 var(--checkbox-size, 16px);
 }
 
-.tc-workspace-switcher :focus-visible,
-.tc-workspace-manager :focus-visible {
+.tc-workspace-switcher :focus-visible {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 3px;
 }
