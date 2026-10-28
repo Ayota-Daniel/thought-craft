@@ -8,6 +8,7 @@ import { ThoughtCraftSettingsTab } from './settings/settings-tab';
 import { QuickCaptureModal } from './ui/capture/quick-capture-modal';
 import { InboxView, INBOX_VIEW_TYPE } from './ui/inbox/inbox-view';
 import { FocusView, FOCUS_VIEW_TYPE } from './ui/focus/focus-view';
+import { createFrom } from './application/create-entity';
 
 export default class ThoughtCraftPlugin extends Plugin {
   settings: BrainstormSettings = { ...DEFAULT_SETTINGS };
@@ -26,7 +27,7 @@ export default class ThoughtCraftPlugin extends Plugin {
         this.entityIndex,
         () => this.openCapture(),
         (id) => {
-          void this.openIdea(id);
+          void this.openEntityFocus(id);
         },
       );
       this.register(() => view.dispose());
@@ -42,6 +43,18 @@ export default class ThoughtCraftPlugin extends Plugin {
         },
         (entityId) => {
           void this.openMarkdownNote(entityId);
+        },
+        (entityId) => {
+          void this.openEntityFocus(entityId);
+        },
+        async (sourceEntityId, input) => {
+          const created = await createFrom(
+            sourceEntityId,
+            input,
+            this.entityIndex,
+            this.repository,
+          );
+          await this.openEntityFocus(created.id);
         },
       );
       this.register(() => view.disposeFocus());
@@ -145,10 +158,10 @@ export default class ThoughtCraftPlugin extends Plugin {
     }
   }
 
-  private async openIdea(id: string): Promise<void> {
+  private async openEntityFocus(id: string): Promise<void> {
     try {
       if (!this.entityIndex.getById(id)) {
-        throw new Error('This idea is no longer available in the vault.');
+        throw new Error('This entity is no longer available in the vault.');
       }
 
       const existingLeaf = this.app.workspace.getLeavesOfType(FOCUS_VIEW_TYPE).find((leaf) => {
@@ -163,7 +176,7 @@ export default class ThoughtCraftPlugin extends Plugin {
       });
       await this.app.workspace.revealLeaf(leaf);
     } catch (error) {
-      new Notice(error instanceof Error ? error.message : 'Could not open this idea.');
+      new Notice(error instanceof Error ? error.message : 'Could not open this entity.');
     }
   }
 
@@ -177,7 +190,7 @@ export default class ThoughtCraftPlugin extends Plugin {
         await this.app.workspace.getLeaf('tab').openFile(file);
       });
     } catch (error) {
-      new Notice(error instanceof Error ? error.message : 'Could not open this idea.');
+      new Notice(error instanceof Error ? error.message : 'Could not open this entity.');
     }
   }
 }

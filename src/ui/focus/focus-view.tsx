@@ -14,6 +14,12 @@ import type { EntityIndex } from '../../infrastructure/entity-index';
 import { isRecord } from '../../shared/record';
 import { AddPropertyModal } from './add-property-modal';
 import { PropertyInspector } from './property-inspector';
+import { ENTITY_TYPES } from '../../domain/entity-type';
+import type { EntityRelationWriter } from '../../application/entity-relations';
+import type { CreateFromInput } from '../../application/create-entity';
+import { AddRelationModal } from './add-relation-modal';
+import { CreateFromModal } from './create-from-modal';
+import { Relationships } from './relationships';
 
 export const FOCUS_VIEW_TYPE = 'thought-craft-focus';
 
@@ -26,13 +32,18 @@ export class FocusView extends ItemView {
   private unsubscribe: (() => void) | null = null;
   private propertyModal: AddPropertyModal | null = null;
   private renderVersion = 0;
+  private typeLabelEl: HTMLElement | null = null;
+  private relationModal: AddRelationModal | null = null;
+  private createModal: CreateFromModal | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
     private index: EntityIndex,
-    private propertyWriter: EntityPropertyWriter,
+    private propertyWriter: EntityPropertyWriter & EntityRelationWriter,
     private showInbox: () => void,
     private openMarkdown: (entityId: string) => void,
+    private openFocus: (entityId: string) => void,
+    private createFromEntity: (sourceEntityId: string, input: CreateFromInput) => Promise<void>,
   ) {
     super(leaf);
   }
@@ -46,7 +57,8 @@ export class FocusView extends ItemView {
   }
 
   getIcon(): string {
-    return 'lightbulb';
+    const entity = this.entityId ? this.index.getById(this.entityId) : undefined;
+    return ENTITY_TYPES[entity?.type ?? 'idea'].icon;
   }
 
   getState(): Record<string, unknown> {
@@ -66,6 +78,8 @@ export class FocusView extends ItemView {
     const toolbar = this.contentEl.createDiv({ cls: 'tc-focus-toolbar' });
     const backButton = toolbar.createEl('button', { text: 'Back to inbox' });
     backButton.addEventListener('click', this.showInbox);
+    const createButton = toolbar.createEl('button', { text: 'Create from…' });
+    createButton.addEventListener('click', () => this.showCreateDialog());
     const markdownButton = toolbar.createEl('button', { text: 'Open Markdown note' });
     markdownButton.addEventListener('click', () => {
       if (this.entityId) {
@@ -75,7 +89,7 @@ export class FocusView extends ItemView {
 
     const layout = this.contentEl.createDiv({ cls: 'tc-focus-layout' });
     const content = layout.createEl('article', { cls: 'tc-focus-main' });
-    content.createSpan({ cls: 'tc-eyebrow', text: 'Thought Craft · Idea' });
+    this.typeLabelEl = content.createSpan({ cls: 'tc-eyebrow' });
     this.headingEl = content.createEl('h1');
     this.bodyEl = content.createDiv({ cls: 'tc-focus-markdown' });
 
@@ -109,12 +123,15 @@ export class FocusView extends ItemView {
     this.unsubscribe?.();
     this.unsubscribe = null;
     this.propertyModal?.close();
+    this.relationModal?.close();
+    this.createModal?.close();
     this.inspectorRoot?.unmount();
     this.inspectorRoot = null;
     this.markdownComponent?.unload();
     this.markdownComponent = null;
     this.bodyEl = null;
     this.headingEl = null;
+    this.typeLabelEl = null;
   }
 
   private async refreshEntity(): Promise<void> {
@@ -139,13 +156,23 @@ export class FocusView extends ItemView {
     }
 
     this.headingEl.setText(entity.title);
+    this.typeLabelEl?.setText(`Thought Craft · ${ENTITY_TYPES[entity.type].label}`);
     this.inspectorRoot.render(
       <PropertyInspector
         key={entity.id}
         entity={entity}
         writer={this.propertyWriter}
         addProperty={() => this.showPropertyDialog(entity)}
-      />,
+      >
+        <Relationships
+          entity={entity}
+          outgoing={this.index.getOutgoingRelations(entity.id)}
+          incoming={this.index.getIncomingRelations(entity.id)}
+          writer={this.propertyWriter}
+          addRelation={() => this.showRelationDialog(entity)}
+          openEntity={this.openFocus}
+        />
+      </PropertyInspector>,
     );
 
     await this.renderMarkdown(entity, version);
@@ -203,5 +230,39 @@ export class FocusView extends ItemView {
       },
     );
     this.propertyModal.open();
+  }
+
+  private showRelationDialog(entity: Entity): void {
+    if (this.relationModal) {
+      return;
+    }
+
+    this.relationModal = new AddRelationModal(
+      this.app,
+      entity.id,
+      this.index,
+      (input) => this.propertyWriter.addRelation(entity.id, input),
+      () => {
+        this.relationModal = null;
+      },
+    );
+    this.relationModal.open();
+  }
+
+  private showCreateDialog(): void {
+    const entity = this.entityId ? this.index.getById(this.entityId) : undefined;
+    if (!entity || this.createModal) {
+      return;
+    }
+
+    this.createModal = new CreateFromModal(
+      this.app,
+      entity,
+      (input) => this.createFromEntity(entity.id, input),
+      () => {
+        this.createModal = null;
+      },
+    );
+    this.createModal.open();
   }
 }

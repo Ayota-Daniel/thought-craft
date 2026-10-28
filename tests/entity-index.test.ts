@@ -13,6 +13,8 @@ const idea: Entity = {
   updatedAt: '2026-10-28T10:00:00Z',
   properties: [],
   propertyIssues: [],
+  relations: [],
+  relationIssues: [],
 };
 
 describe('EntityIndex', () => {

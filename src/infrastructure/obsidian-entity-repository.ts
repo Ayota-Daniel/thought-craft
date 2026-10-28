@@ -1,19 +1,32 @@
 import { getFrontMatterInfo, normalizePath, parseYaml, TFile, TFolder, type App } from 'obsidian';
-import type { NewIdea, IdeaWriter } from '../application/capture-idea';
+import type { EntityWriter, NewEntity } from '../application/create-entity';
+import type { EntityRelationWriter } from '../application/entity-relations';
+import {
+  validateNewRelation,
+  validateRelation,
+  type EntityRelation,
+  type NewRelation,
+} from '../domain/entity-relation';
+import { isEntityType } from '../domain/entity-type';
+import { isUuid, isTimestamp } from '../shared/metadata-validation';
+import { folderForEntity } from '../shared/entity-path';
+import { addEntityRelation, removeEntityRelation, serializeRelation } from './relation-mapper';
 import type { EntityPropertyWriter } from '../application/entity-properties';
 import type { CustomProperty, NewProperty, PropertyValue } from '../domain/custom-property';
 import type { Entity } from '../domain/entity';
 import type { BrainstormSettings } from '../settings/settings';
-import { deriveTitle, notePath, sanitizeFilename, validateFolderPath } from '../shared/note-path';
+import { notePath, sanitizeFilename } from '../shared/note-path';
 import { EntityIndex } from './entity-index';
 import { entityFromFrontmatter, writeEntityFrontmatter } from './frontmatter-mapper';
 import { addCustomProperty, removeCustomProperty, updateCustomProperty } from './property-mapper';
 
-export class ObsidianEntityRepository implements IdeaWriter, EntityPropertyWriter {
+export class ObsidianEntityRepository
+  implements EntityWriter, EntityPropertyWriter, EntityRelationWriter
+{
   private active = true;
   private revisions = new Map<string, number>();
   private clock = 0;
-  private propertyWrites = new Map<string, Promise<void>>();
+  private metadataWrites = new Map<string, Promise<void>>();
 
   constructor(
     private app: App,
@@ -91,10 +104,28 @@ export class ObsidianEntityRepository implements IdeaWriter, EntityPropertyWrite
     }
   }
 
-  async createIdea(idea: NewIdea): Promise<Entity> {
-    const folder = normalizePath(validateFolderPath(this.getSettings().entitiesFolder));
+  async createEntity(input: NewEntity): Promise<Entity> {
+    if (
+      !isEntityType(input.type) ||
+      !isUuid(input.id) ||
+      !isTimestamp(input.createdAt) ||
+      !input.title.trim() ||
+      !input.workspaceId.trim()
+    ) {
+      throw new Error(
+        'A new entity needs valid identity, type, title, workspace and creation time.',
+      );
+    }
+    const validatedRelations: EntityRelation[] = [];
+    for (const relation of input.relations) {
+      validateRelation(relation);
+      validateNewRelation(input.id, relation, validatedRelations);
+      validatedRelations.push(relation);
+    }
+
+    const folder = normalizePath(folderForEntity(input.type, this.getSettings().entitiesFolder));
     await this.ensureFolder(folder);
-    const stem = sanitizeFilename(deriveTitle(idea.content));
+    const stem = sanitizeFilename(input.title);
     let file: TFile | undefined;
     for (let attempt = 0; attempt < 10_000; attempt++) {
       const path = normalizePath(notePath(folder, stem, attempt));
@@ -104,7 +135,7 @@ export class ObsidianEntityRepository implements IdeaWriter, EntityPropertyWrite
       try {
         // An empty frontmatter envelope prevents user text beginning with ---
         // from being interpreted as metadata. All fields are written by the API.
-        file = await this.app.vault.create(path, `---\n---\n\n${idea.content}\n`);
+        file = await this.app.vault.create(path, `---\n---\n\n${input.content}\n`);
         break;
       } catch (error) {
         if (this.app.vault.getAbstractFileByPath(path)) {
@@ -117,28 +148,33 @@ export class ObsidianEntityRepository implements IdeaWriter, EntityPropertyWrite
       throw new Error('Could not find an available filename. Try a different first line.');
     }
     const entity: Entity = {
-      id: idea.id,
-      type: 'idea',
+      id: input.id,
+      type: input.type,
       title: file.basename,
-      workspaceId: idea.workspaceId,
-      status: 'inbox',
+      workspaceId: input.workspaceId,
+      status: input.type === 'idea' ? 'inbox' : 'exploring',
       filePath: file.path,
-      createdAt: idea.createdAt,
-      updatedAt: idea.createdAt,
+      createdAt: input.createdAt,
+      updatedAt: input.createdAt,
       properties: [],
       propertyIssues: [],
+      relations: Object.freeze([...validatedRelations]),
+      relationIssues: [],
     };
     try {
       await this.app.fileManager.processFrontMatter(
         file,
         (frontmatter: Record<string, unknown>) => {
           writeEntityFrontmatter(frontmatter, entity);
+          if (entity.relations.length > 0) {
+            frontmatter.bs_relations = entity.relations.map(serializeRelation);
+          }
         },
       );
     } catch (error) {
       console.error('Thought Craft: frontmatter update failed.', error);
       throw new Error(
-        `Your text is safe in ${file.path}, but its idea metadata could not be saved. Check the note before capturing again.`,
+        `Your text is safe in ${file.path}, but its entity metadata could not be saved. Check the note before capturing again.`,
       );
     }
     // Supersede any reads of the temporary empty frontmatter. UI updates do not
@@ -153,28 +189,50 @@ export class ObsidianEntityRepository implements IdeaWriter, EntityPropertyWrite
   }
 
   addProperty(entityId: string, input: NewProperty): Promise<void> {
-    return this.mutateProperties(entityId, (frontmatter) => {
+    return this.mutateMetadata(entityId, (frontmatter) => {
       addCustomProperty(frontmatter, input);
     });
   }
 
   updateProperty(entityId: string, property: CustomProperty, value: PropertyValue): Promise<void> {
-    return this.mutateProperties(entityId, (frontmatter) => {
+    return this.mutateMetadata(entityId, (frontmatter) => {
       updateCustomProperty(frontmatter, property, value);
     });
   }
 
   removeProperty(entityId: string, property: CustomProperty): Promise<void> {
-    return this.mutateProperties(entityId, (frontmatter) => {
+    return this.mutateMetadata(entityId, (frontmatter) => {
       removeCustomProperty(frontmatter, property);
     });
   }
 
-  private mutateProperties(
+  addRelation(sourceEntityId: string, input: NewRelation): Promise<void> {
+    const relation: EntityRelation = {
+      id: globalThis.crypto.randomUUID(),
+      type: input.type,
+      targetEntityId: input.targetEntityId.toLowerCase(),
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.mutateMetadata(sourceEntityId, (frontmatter) => {
+      if (!this.index.getById(relation.targetEntityId)) {
+        throw new Error('The target entity is no longer available.');
+      }
+      addEntityRelation(frontmatter, sourceEntityId, relation);
+    });
+  }
+
+  removeRelation(sourceEntityId: string, relation: EntityRelation): Promise<void> {
+    return this.mutateMetadata(sourceEntityId, (frontmatter) => {
+      removeEntityRelation(frontmatter, relation);
+    });
+  }
+
+  private mutateMetadata(
     entityId: string,
     mutate: (frontmatter: Record<string, unknown>) => void,
   ): Promise<void> {
-    const previousWrite = this.propertyWrites.get(entityId) ?? Promise.resolve();
+    const previousWrite = this.metadataWrites.get(entityId) ?? Promise.resolve();
     const operation = previousWrite
       .catch(() => undefined)
       .then(async () => {
@@ -197,7 +255,7 @@ export class ObsidianEntityRepository implements IdeaWriter, EntityPropertyWrite
 
               if (currentEntity?.id !== entityId) {
                 throw new Error(
-                  'The note identity or metadata changed. Reopen the entity before editing properties.',
+                  'The note identity or metadata changed. Reopen the entity before editing this entity.',
                 );
               }
 
@@ -211,11 +269,11 @@ export class ObsidianEntityRepository implements IdeaWriter, EntityPropertyWrite
         }
       });
 
-    this.propertyWrites.set(entityId, operation);
+    this.metadataWrites.set(entityId, operation);
 
     const cleanUp = () => {
-      if (this.propertyWrites.get(entityId) === operation) {
-        this.propertyWrites.delete(entityId);
+      if (this.metadataWrites.get(entityId) === operation) {
+        this.metadataWrites.delete(entityId);
       }
     };
 
@@ -242,7 +300,7 @@ export class ObsidianEntityRepository implements IdeaWriter, EntityPropertyWrite
       }
       if (existing) {
         throw new Error(
-          `A file blocks the idea folder at ${current}. Choose another folder in settings.`,
+          `A file blocks the entity folder at ${current}. Choose another folder in settings.`,
         );
       }
       try {

@@ -1,5 +1,16 @@
 import type { Entity } from '../domain/entity';
 import { titleFromPath } from '../shared/note-path';
+import type { EntityRelation } from '../domain/entity-relation';
+
+export interface OutgoingRelation {
+  relation: EntityRelation;
+  target: Entity | undefined;
+}
+
+export interface IncomingRelation {
+  relation: EntityRelation;
+  source: Entity;
+}
 
 /** Disposable UUID-keyed projection of the Markdown notes in the vault. */
 export class EntityIndex {
@@ -18,6 +29,29 @@ export class EntityIndex {
 
   getAll(): readonly Entity[] {
     return [...this.entities.values()];
+  }
+
+  getOutgoingRelations(entityId: string): readonly OutgoingRelation[] {
+    const entity = this.getById(entityId);
+    return (entity?.relations ?? []).map((relation) => ({
+      relation,
+      target: this.getById(relation.targetEntityId),
+    }));
+  }
+
+  getIncomingRelations(entityId: string): readonly IncomingRelation[] {
+    const incoming: IncomingRelation[] = [];
+
+    // M2 favors a direct scan over maintaining a second relationship index.
+    for (const source of this.entities.values()) {
+      for (const relation of source.relations) {
+        if (relation.targetEntityId === entityId) {
+          incoming.push({ relation, source });
+        }
+      }
+    }
+
+    return incoming;
   }
 
   isReady(): boolean {

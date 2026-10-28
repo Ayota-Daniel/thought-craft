@@ -186,7 +186,80 @@ button.tc-inbox-row:focus-visible {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
   margin-bottom: 36px;
+}
+
+.tc-relationships {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.tc-relationships h3 {
+  margin: 18px 0 6px;
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.tc-relation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tc-relation-row {
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.tc-relation-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+button.tc-entity-link {
+  height: auto;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+button.tc-entity-link:hover {
+  color: var(--interactive-accent);
+  text-decoration: underline;
+}
+.tc-relation-type {
+  display: block;
+  margin-top: 5px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+button.tc-relation-remove {
+  height: auto;
+  padding: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+button.tc-relation-remove:hover {
+  color: var(--text-error);
+}
+.tc-missing-target {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.tc-add-relation-modal select[size] {
+  height: auto;
+  padding: 8px;
+  background: var(--background-primary);
+}
+.tc-add-relation-modal select[size] option {
+  padding: 8px 4px;
+  white-space: normal;
 }
 .tc-focus-toolbar button {
   color: var(--text-muted);

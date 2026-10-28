@@ -26,12 +26,14 @@ describe('frontmatter mapper', () => {
       updatedAt: valid.bs_updated,
       properties: [],
       propertyIssues: [],
+      relations: [],
+      relationIssues: [],
     });
     expect(entityFromFrontmatter(valid, 'Moved/New name.md')?.id).toBe(valid.bs_id);
   });
   it('requires an id and rejects unsupported types', () => {
     expect(entityFromFrontmatter({ ...valid, bs_id: undefined }, 'x.md')).toBeNull();
-    expect(entityFromFrontmatter({ ...valid, bs_type: 'scene' }, 'x.md')).toBeNull();
+    expect(entityFromFrontmatter({ ...valid, bs_type: 'quest' }, 'x.md')).toBeNull();
   });
   it.each([null, undefined, [], 'yaml', 3])('rejects non-object metadata: %s', (value) => {
     expect(entityFromFrontmatter(value, 'x.md')).toBeNull();

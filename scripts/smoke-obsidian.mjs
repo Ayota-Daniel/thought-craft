@@ -274,7 +274,7 @@ try {
   await writeFile(join(vault, 'Missing ID.md'), externalContent.replace(/^bs_id:.*\n/m, ''));
   await writeFile(
     join(vault, 'Unsupported.md'),
-    externalContent.replace('bs_type: idea', 'bs_type: scene'),
+    externalContent.replace('bs_type: idea', 'bs_type: quest'),
   );
   await writeFile(join(vault, 'Broken YAML.md'), '---\nbs_id: [broken\n---\nKeep this body.\n');
   await entityCount(3);

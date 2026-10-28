@@ -1,19 +1,26 @@
 import type { EntityPropertyWriter } from '../../application/entity-properties';
 import type { Entity } from '../../domain/entity';
 import { PropertyEditor } from './property-editor';
+import type { ReactNode } from 'react';
 
 interface PropertyInspectorProps {
   entity: Entity;
   writer: EntityPropertyWriter;
   addProperty: () => void;
+  children?: ReactNode;
 }
 
-export function PropertyInspector({ entity, writer, addProperty }: PropertyInspectorProps) {
+export function PropertyInspector({
+  entity,
+  writer,
+  addProperty,
+  children,
+}: PropertyInspectorProps) {
   return (
     <div className="tc-inspector-content">
       <h2>Properties</h2>
       {entity.properties.length === 0 && (
-        <p className="tc-inspector-hint">Add the details that matter to this idea.</p>
+        <p className="tc-inspector-hint">Add the details that matter to this entity.</p>
       )}
 
       {entity.properties.map((property) => (
@@ -39,6 +46,8 @@ export function PropertyInspector({ entity, writer, addProperty }: PropertyInspe
           </ul>
         </div>
       )}
+
+      {children}
 
       <details className="tc-entity-metadata">
         <summary>Thought Craft metadata</summary>
