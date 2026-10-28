@@ -1,3 +1,4 @@
+import type { WorkspaceRegistry } from './workspace-registry';
 import type { EntityTypeRegistry } from './entity-type-registry';
 import type { Entity } from '../domain/entity';
 import { isEntityType, type EntityType } from '../domain/entity-type';
@@ -29,6 +30,7 @@ export async function createFrom(
   index: { getById(id: string): Entity | undefined },
   writer: EntityWriter,
   registry: EntityTypeRegistry,
+  workspaces: WorkspaceRegistry,
 ): Promise<Entity> {
   const source = index.getById(sourceEntityId);
   if (!source) {
@@ -42,6 +44,8 @@ export async function createFrom(
   ) {
     throw new Error('Choose an entity type and enter a title.');
   }
+
+  workspaces.validateCreation(source.workspaceId, input.type, registry);
 
   const createdAt = new Date().toISOString();
   const origin: EntityRelation = {

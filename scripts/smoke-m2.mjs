@@ -413,6 +413,10 @@ try {
     'Relation removal deletes only the selected edge and preserves custom properties, other bs_ fields, user frontmatter and exact Markdown body.',
   );
 
+  await evaluate(
+    "window.tcWorkspaceSetup = false; app.plugins.plugins['thought-craft'].workspaces.create({id:'novel', label:'Novel', enabledEntityTypeIds:['idea','character','scene','location','project']}).then(() => {window.tcWorkspaceSetup=true;}); true",
+  );
+  await page.waitForFunction(() => window.tcWorkspaceSetup);
   await capture('Noah already knows the conductor\n\nAn idea that becomes a character.');
   const origin = await findEntity('Noah already knows the conductor');
   const originMarkdown = (await readFile(join(vault, origin.filePath), 'utf8')).replace(

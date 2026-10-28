@@ -612,3 +612,63 @@ button.tc-property-remove:hover {
     border: 0;
   }
 }
+
+.tc-workspace-switcher {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.tc-workspace-switcher label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.tc-workspace-switcher select {
+  max-width: min(260px, 60vw);
+}
+.tc-workspace-switcher button {
+  box-shadow: none;
+}
+.tc-focus-workspace {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin-top: 10px;
+}
+.tc-workspace-manager {
+  width: min(880px, 92vw);
+}
+.tc-workspace-manager .modal-content {
+  max-height: 75vh;
+  overflow: auto;
+}
+.tc-type-choices {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: 12px;
+}
+.tc-type-choices legend {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+.tc-property-form .tc-type-choices label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.tc-property-form .tc-type-choices input[type='checkbox'],
+.tc-property-form .tc-inline-check input[type='checkbox'] {
+  width: var(--checkbox-size, 16px);
+  height: var(--checkbox-size, 16px);
+  flex: 0 0 var(--checkbox-size, 16px);
+}
+
+.tc-workspace-switcher :focus-visible,
+.tc-workspace-manager :focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 3px;
+}

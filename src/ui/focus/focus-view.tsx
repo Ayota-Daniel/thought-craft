@@ -1,3 +1,5 @@
+import type { WorkspaceRegistry } from '../../application/workspace-registry';
+import type { RelationTypeRegistry } from '../../application/relation-type-registry';
 import {
   Component,
   getFrontMatterInfo,
@@ -28,6 +30,8 @@ export const FOCUS_VIEW_TYPE = 'thought-craft-focus';
 
 export class FocusView extends ItemView {
   private unsubscribeTypes: (() => void) | null = null;
+  private unsubscribeWorkspaces: (() => void) | null = null;
+  private workspaceLabelEl: HTMLElement | null = null;
   private entityId: string | null = null;
   private headingEl: HTMLElement | null = null;
   private bodyEl: HTMLElement | null = null;
@@ -50,6 +54,8 @@ export class FocusView extends ItemView {
     private createFromEntity: (sourceEntityId: string, input: CreateFromInput) => Promise<void>,
     private registry: EntityTypeRegistry,
     private manageType: (typeId: string) => void,
+    private workspaces: WorkspaceRegistry,
+    private relationTypes: RelationTypeRegistry,
   ) {
     super(leaf);
   }
@@ -114,6 +120,7 @@ export class FocusView extends ItemView {
     const layout = this.contentEl.createDiv({ cls: 'tc-focus-layout' });
     const content = layout.createEl('article', { cls: 'tc-focus-main' });
     this.typeLabelEl = content.createSpan({ cls: 'tc-eyebrow' });
+    this.workspaceLabelEl = content.createDiv({ cls: 'tc-focus-workspace' });
     this.headingEl = content.createEl('h1');
     this.bodyEl = content.createDiv({ cls: 'tc-focus-markdown' });
 
@@ -122,6 +129,9 @@ export class FocusView extends ItemView {
       attr: { 'aria-label': 'Entity properties' },
     });
     this.inspectorRoot = createRoot(inspector);
+    this.unsubscribeWorkspaces = this.workspaces.subscribe(() => {
+      void this.refreshEntity();
+    });
     this.unsubscribeTypes = this.registry.subscribe(() => {
       void this.refreshEntity();
     });
@@ -147,6 +157,9 @@ export class FocusView extends ItemView {
 
   disposeFocus(): void {
     this.renderVersion += 1;
+    this.unsubscribeWorkspaces?.();
+    this.unsubscribeWorkspaces = null;
+    this.workspaceLabelEl = null;
     this.unsubscribeTypes?.();
     this.unsubscribeTypes = null;
     this.unsubscribe?.();
@@ -178,12 +191,16 @@ export class FocusView extends ItemView {
           ? 'The note may have been deleted, or its Thought Craft metadata is no longer valid.'
           : 'Your entity will appear once the Markdown index is ready.',
       );
+      this.workspaceLabelEl?.setText('');
       this.inspectorRoot.render(null);
       this.markdownComponent?.unload();
       this.markdownComponent = null;
       return;
     }
 
+    this.workspaceLabelEl?.setText(
+      `Workspace · ${this.workspaces.label(entity.workspaceId)}${this.workspaces.get(entity.workspaceId)?.retired ? ' · Retired' : ''}`,
+    );
     this.headingEl.setText(entity.title);
     this.typeLabelEl?.setText(`Thought Craft · ${this.registry.label(entity.type)}`);
     this.inspectorRoot.render(
@@ -198,6 +215,7 @@ export class FocusView extends ItemView {
         <Relationships
           entity={entity}
           registry={this.registry}
+          relationTypes={this.relationTypes}
           outgoing={this.index.getOutgoingRelations(entity.id)}
           incoming={this.index.getIncomingRelations(entity.id)}
           writer={this.propertyWriter}
@@ -274,6 +292,8 @@ export class FocusView extends ItemView {
       entity.id,
       this.index,
       this.registry,
+      this.workspaces,
+      this.relationTypes,
       (input) => this.propertyWriter.addRelation(entity.id, input),
       () => {
         this.relationModal = null;
@@ -292,6 +312,7 @@ export class FocusView extends ItemView {
       this.app,
       entity,
       this.registry,
+      this.workspaces,
       (input) => this.createFromEntity(entity.id, input),
       () => {
         this.createModal = null;

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import type { Entity } from '../../domain/entity';
 import type { EntityTypeRegistry } from '../../application/entity-type-registry';
-import { RELATION_TYPES } from '../../domain/entity-relation';
+import type { RelationTypeRegistry } from '../../application/relation-type-registry';
 import type { EntityRelationWriter } from '../../application/entity-relations';
 import type { IncomingRelation, OutgoingRelation } from '../../infrastructure/entity-index';
 
 interface RelationshipsProps {
   entity: Entity;
   registry: EntityTypeRegistry;
+  relationTypes: RelationTypeRegistry;
   outgoing: readonly OutgoingRelation[];
   incoming: readonly IncomingRelation[];
   writer: EntityRelationWriter;
@@ -18,13 +19,15 @@ interface RelationshipsProps {
 function OutgoingRelationRow({
   edge,
   registry,
-  sourceId,
+  relationTypes,
+  source,
   writer,
   openEntity,
 }: {
   edge: OutgoingRelation;
   registry: EntityTypeRegistry;
-  sourceId: string;
+  relationTypes: RelationTypeRegistry;
+  source: Entity;
   writer: EntityRelationWriter;
   openEntity: (entityId: string) => void;
 }) {
@@ -32,6 +35,12 @@ function OutgoingRelationRow({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const title = edge.target?.title ?? 'Unavailable target';
+  const definition = relationTypes.resolve(source.workspaceId, edge.relation.type);
+  const compatibilityIssue = relationTypes.compatibilityIssue(
+    source,
+    edge.target,
+    edge.relation.type,
+  );
 
   async function removeRelation(): Promise<void> {
     if (pending) {
@@ -41,7 +50,7 @@ function OutgoingRelationRow({
     setError('');
 
     try {
-      await writer.removeRelation(sourceId, edge.relation);
+      await writer.removeRelation(source.id, edge.relation);
     } catch (operationError) {
       setError(
         operationError instanceof Error ? operationError.message : 'Could not remove the relation.',
@@ -75,11 +84,13 @@ function OutgoingRelationRow({
         </button>
       </div>
       <span className="tc-relation-type">
-        {RELATION_TYPES[edge.relation.type]}
+        {relationTypes.label(source.workspaceId, edge.relation.type)}
         {edge.target
           ? ` · ${registry.label(edge.target.type)}`
           : ` · ${edge.relation.targetEntityId.slice(0, 8)}`}
       </span>
+      {definition?.retired && <span className="tc-relation-type">Retired relation type</span>}
+      {compatibilityIssue && <p className="tc-property-issues">{compatibilityIssue}</p>}
       {confirmRemoval && (
         <div
           className="tc-remove-confirmation"
@@ -113,6 +124,7 @@ function OutgoingRelationRow({
 export function Relationships({
   entity,
   registry,
+  relationTypes,
   outgoing,
   incoming,
   writer,
@@ -130,7 +142,8 @@ export function Relationships({
             key={edge.relation.id}
             edge={edge}
             registry={registry}
-            sourceId={entity.id}
+            relationTypes={relationTypes}
+            source={entity}
             writer={writer}
             openEntity={openEntity}
           />
@@ -148,8 +161,14 @@ export function Relationships({
               {source.title}
             </button>
             <span className="tc-relation-type">
-              {RELATION_TYPES[relation.type]} · {registry.label(source.type)}
+              {relationTypes.label(source.workspaceId, relation.type)} ·{' '}
+              {registry.label(source.type)}
             </span>
+            {relationTypes.compatibilityIssue(source, entity, relation.type) && (
+              <p className="tc-property-issues">
+                {relationTypes.compatibilityIssue(source, entity, relation.type)}
+              </p>
+            )}
           </li>
         ))}
       </ul>

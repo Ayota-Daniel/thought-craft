@@ -61,7 +61,7 @@ describe('relation parsing', () => {
     { ...validDefinition, id: 'invalid' },
     { ...validDefinition, target_entity_id: undefined },
     { ...validDefinition, target_entity_id: 'Characters/Noah.md' },
-    { ...validDefinition, type: 'unknown' },
+    { ...validDefinition, type: 'invalid type!' },
     { ...validDefinition, created_at: 'yesterday' },
     { ...validDefinition, created_at: '2026-02-30T10:00:00.000Z' },
     { ...validDefinition, target_entity_id: SOURCE_ID },

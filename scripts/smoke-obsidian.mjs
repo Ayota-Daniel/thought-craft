@@ -290,12 +290,16 @@ try {
   await page.waitForFunction(
     () => window.app.plugins.plugins['thought-craft'].settings.defaultWorkspace === 'novel',
   );
+  await evaluate(
+    "window.tcWorkspaceSetup = false; const plugin = app.plugins.plugins['thought-craft']; plugin.workspaces.create({id:'novel', label:'Novel'}).then(() => plugin.workspaces.setActive('novel')).then(() => {window.tcWorkspaceSetup=true;}); true",
+  );
+  await page.waitForFunction(() => window.tcWorkspaceSetup);
   await capture('A thought in a custom workspace');
   await entityCount(4);
   const settingsData = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
   assert.equal(settingsData.entitiesFolder, 'Custom/Ideas');
   assert.equal(settingsData.defaultWorkspace, 'novel');
-  assert.equal(settingsData.configVersion, 3);
+  assert.equal(settingsData.configVersion, 4);
   assert.equal(settingsData.entityTypes.length, 5);
   assert.equal(settingsData.entities, undefined);
   assert.match(
@@ -306,6 +310,10 @@ try {
     'Settings persist via plugin data; capture settings and global schema definitions are stored there, while entities remain in Markdown.',
   );
 
+  await evaluate("void app.plugins.plugins['thought-craft'].workspaces.setActive('default'); true");
+  await page.waitForFunction(
+    () => window.app.plugins.plugins['thought-craft'].workspaces.getActive().id === 'default',
+  );
   await unlink(join(vault, duplicate.filePath));
   await entityCount(3);
   checks.push('External deletion removes the entity from the Inbox.');

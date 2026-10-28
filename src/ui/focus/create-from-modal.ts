@@ -1,3 +1,4 @@
+import type { WorkspaceRegistry } from '../../application/workspace-registry';
 import { Modal, type App } from 'obsidian';
 import type { Entity } from '../../domain/entity';
 import type { EntityTypeRegistry } from '../../application/entity-type-registry';
@@ -5,12 +6,14 @@ import type { CreateFromInput } from '../../application/create-entity';
 
 export class CreateFromModal extends Modal {
   private pending = false;
+  private unsubscribeWorkspaces: (() => void) | null = null;
   private unsubscribe: (() => void) | null = null;
 
   constructor(
     app: App,
     private source: Entity,
     private registry: EntityTypeRegistry,
+    private workspaces: WorkspaceRegistry,
     private createEntity: (input: CreateFromInput) => Promise<void>,
     private onClosed: () => void,
   ) {
@@ -27,14 +30,22 @@ export class CreateFromModal extends Modal {
     const refreshTypes = () => {
       const selected = typeInput.value;
       typeInput.empty();
-      for (const type of this.registry.getActive()) {
+      for (const type of this.workspaces.getAvailableEntityTypes(
+        this.source.workspaceId,
+        this.registry,
+      )) {
         typeInput.createEl('option', { value: type.id, text: type.label });
       }
-      if (this.registry.getActive().some((type) => type.id === selected)) {
+      if (
+        this.workspaces
+          .getAvailableEntityTypes(this.source.workspaceId, this.registry)
+          .some((type) => type.id === selected)
+      ) {
         typeInput.value = selected;
       }
     };
     refreshTypes();
+    this.unsubscribeWorkspaces = this.workspaces.subscribe(refreshTypes);
     this.unsubscribe = this.registry.subscribe(refreshTypes);
 
     const titleLabel = form.createEl('label', { text: 'Title' });
@@ -47,8 +58,16 @@ export class CreateFromModal extends Modal {
     const contentInput = contentLabel.createEl('textarea', { attr: { rows: '4' } });
     form.createDiv({
       cls: 'tc-inspector-hint',
-      text: `Workspace: ${this.source.workspaceId}. The new entity will link back to this source.`,
+      text: `Workspace: ${this.workspaces.label(this.source.workspaceId)}. The new entity will link back to this source.`,
     });
+    if (
+      this.workspaces.getAvailableEntityTypes(this.source.workspaceId, this.registry).length === 0
+    ) {
+      form.createEl('p', {
+        cls: 'tc-inspector-hint',
+        text: 'No active entity types are enabled in this workspace. Manage workspaces to enable creation.',
+      });
+    }
     const errorEl = form.createDiv({ cls: 'tc-error', attr: { role: 'alert' } });
     const footer = form.createDiv({ cls: 'tc-property-form-footer' });
     const cancelButton = footer.createEl('button', { text: 'Cancel', type: 'button' });
@@ -91,6 +110,8 @@ export class CreateFromModal extends Modal {
   }
 
   onClose(): void {
+    this.unsubscribeWorkspaces?.();
+    this.unsubscribeWorkspaces = null;
     this.unsubscribe?.();
     this.unsubscribe = null;
     this.contentEl.empty();

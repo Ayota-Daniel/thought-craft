@@ -1,6 +1,6 @@
-# Thought Craft — M3
+# Thought Craft — M4
 
-An Obsidian community plugin built around **Entity + Property + Relation**. Capture ideas, inspect local properties, connect entities by UUID, and create new entities from existing ones. Built-in and custom Entity Types share the same Focus View, reusable property schemas and UUID relations. Markdown remains the source of truth for entity data; schema definitions are global vault configuration.
+An Obsidian community plugin built around **Entity + Property + Relation**. Capture ideas, inspect local properties, connect entities by UUID, and create new entities from existing ones. Built-in and custom Entity Types share the same Focus View, reusable property schemas and UUID relations. Markdown remains the source of truth for entity data; Entity Type/property schemas are global vault configuration. Workspaces scope creation and Inbox, and define custom relation types.
 
 ## Develop
 
@@ -36,7 +36,7 @@ Use a separate test vault while developing.
 3. In that vault, open **Settings → Community plugins**, allow community plugins if required, and enable **Thought Craft**.
 4. Run **Thought Craft: Capture idea** from the Command Palette.
 5. Write an idea. **Enter** captures it, **Shift+Enter** adds a line, and **Escape** closes the modal.
-6. The Inbox opens after capture. Click a row to open the idea in **Thought Craft focus**. Use **Open Markdown note** to edit the same real file with Obsidian's native editor. The ribbon button and **Thought Craft: Open inbox** command also open the Inbox.
+6. The Inbox opens after capture. Use the Workspace switcher to choose context. Click a row to open the idea in **Thought Craft focus**. Use **Open Markdown note** to edit the same real file with Obsidian's native editor. The ribbon button and **Thought Craft: Open inbox** command also open the Inbox.
 
 After rebuilding, run `install:dev` again and disable/re-enable Thought Craft in the test vault, or restart Obsidian. The watch build does not automatically copy files or reload Obsidian.
 
@@ -44,16 +44,16 @@ Assign an optional shortcut in **Settings → Hotkeys → Thought Craft: Capture
 
 ## Settings
 
-Capture keeps its two existing settings. **Manage entity types** opens the reusable schema configuration:
+Capture uses the active Workspace. The existing Idea folder remains configurable; Workspace context is selected in Inbox. **Manage entity types** opens the reusable schema configuration:
 
 | Setting           | Default            | Purpose                                                                      |
 | ----------------- | ------------------ | ---------------------------------------------------------------------------- |
 | Idea folder       | `Brainstorm/Ideas` | Vault-relative destination for new ideas; created recursively when necessary |
-| Default workspace | `default`          | Workspace identifier written onto new notes                                  |
+| Active workspace | `default` | Last selected Workspace, restored through plugin configuration |
 
-Use **Save** after editing settings. Invalid or absolute folder paths are rejected. Changing settings does not move existing notes. The Inbox includes valid inbox ideas throughout the vault, across workspaces; it is not limited to the capture folder.
+Use **Save** after editing settings. Invalid or absolute folder paths are rejected. Changing settings does not move existing notes. The Inbox displays inbox Ideas in the active Workspace, wherever their notes live. Its query is not limited to the capture folder; switching Workspace does not change entity membership or close open Focus/Markdown tabs.
 
-Settings use Obsidian's `loadData` / `saveData` APIs. `data.json` contains capture settings, `configVersion: 3`, and `entityTypes`. These are configuration only: entity identity, values, relations and content remain in Markdown. M0/M1/M2 settings migrate without rewriting notes; missing built-ins are seeded once with no opinionated properties. Unknown configuration fields and unreadable individual type definitions are retained. A malformed type-list root or a newer configuration version blocks loading rather than overwriting configuration.
+Settings use Obsidian's `loadData` / `saveData` APIs. `data.json` contains capture settings, `configVersion: 4`, `entityTypes`, `workspaces` and `activeWorkspaceId`. These are configuration only: entity identity, values, relations and content remain in Markdown. M0–M3 configuration migrates without rewriting notes; missing built-ins are seeded once with no opinionated properties. Unknown configuration fields and unreadable individual type definitions are retained. A malformed type-list root or a newer configuration version blocks loading rather than overwriting configuration.
 
 ### Entity destinations
 
@@ -67,7 +67,7 @@ The existing `entitiesFolder` setting remains the **Idea folder**. Other entity 
 | Location  | `Brainstorm/Locations`  | `exploring`    |
 | Project   | `Brainstorm/Projects`   | `exploring`    |
 
-If the Idea folder is `Custom/Captures`, Characters are created in `Custom/Characters`, and so on. If it is a single root folder such as `Ideas`, the other folders are also at the vault root. No existing notes are moved. Type Manager folder edits affect only future creations. Editing Idea’s folder name also updates the existing capture destination; its parent can be changed in capture settings. Custom types use the same folder resolver, with safe nested relative paths allowed. All valid entities are indexed wherever their files live. Inbox continues to list **only Ideas with status `inbox`**; related entities are available through Focus links and relation search.
+If the Idea folder is `Custom/Captures`, Characters are created in `Custom/Characters`, and so on. If it is a single root folder such as `Ideas`, the other folders are also at the vault root. No existing notes are moved. Type Manager folder edits affect only future creations. Editing Idea’s folder name also updates the existing capture destination; its parent can be changed in capture settings. Custom types use the same folder resolver, with safe nested relative paths allowed. All valid entities are indexed wherever their files live. Inbox continues to list **only Ideas with status `inbox`**; related entities are available through Focus links and relation search. Workspace membership never changes their physical folder.
 
 `exploring` is a compatible generic default for non-Idea entities, not a specialized Character, Scene or Project workflow.
 
@@ -132,6 +132,34 @@ The `bs_properties` format above is the same nested mapping used for every type.
 
 Invalid custom-property definitions are reported in Focus and retained verbatim in frontmatter. Valid neighboring properties remain editable. A malformed `bs_properties` container is never silently replaced; repair it in the Markdown note before making property changes. Unknown keys inside valid definitions are preserved on value updates.
 
+## Workspaces
+
+The compact switcher in Inbox selects the **active Workspace**, a persisted UI/application context. Quick Capture defaults to it and displays its label while writing its stable ID to `bs_workspace`. A new empty Workspace offers a direct capture action. If Idea is disabled, capture controls explain that it must be enabled; the capture command also reports a safe validation error on submission.
+
+Open **Thought Craft: Manage workspaces**, the Inbox **Manage workspaces** button, or the matching settings entry. Create a Workspace with name, stable normalized ID, optional description and enabled global Entity Types. Idea is checked initially; it can be explicitly disabled. Rename labels without changing IDs. Global schemas are edited only in Type Manager; Workspace Manager controls type availability without duplicating schema definitions.
+
+M3 migration seeds built-in `default` with every type active before migration. It never edits notes. If an older capture setting explicitly named another safe Workspace ID, migration also creates that definition and restores it as capture context. Arbitrary Workspace IDs found in notes are not inferred or renamed. Missing/retired active references fall back to `default`, which cannot retire. The old `defaultWorkspace` capture setting remains preserved for compatibility but is no longer the active-context control.
+
+Custom Workspaces support reversible retirement. Retirement preserves definitions and existing entities, excludes switching/new creation, and persistently falls back to Default if necessary. Existing entities with disabled types, unknown/retired types or unknown Workspaces remain readable. Focus shows the entity’s actual Workspace, independently of the active Inbox context, and never silently reassigns it.
+
+### Workspace relation definitions
+
+Workspace Manager supports custom relation types with stable ID, display label, source/target Entity Type ID lists and retirement state. Empty restrictions mean **any enabled, globally active Entity Type**. Multiple restrictions use simple checkboxes. Universal IDs cannot be replaced. Custom relation labels and restrictions can be edited without rewriting existing relation instances; retire/restore keeps the same identity.
+
+Universal relations may cross Workspaces. Target search initially uses the source Workspace and offers **All Workspaces** for universal kinds. Custom relations require both entities to belong to their defining Workspace and respect enabled source/target type restrictions. UI filtering and repository validation enforce these rules. `originated-from` remains universal and is always available to Create From.
+
+Custom instances retain the M2 format, with no definition copied into Markdown:
+
+```yaml
+bs_relations:
+  - id: 'e2c1b5b7-8856-42f4-a958-63ac4944b441'
+    type: appears-in
+    target_entity_id: '06fc0cbc-0100-4b5e-92f4-938b00cb7d08'
+    created_at: '2026-10-29T00:00:00.000Z'
+```
+
+Definitions resolve using the source entity’s Workspace, never the global active context. Retired relation definitions still label existing links but cannot be selected for new links. Unknown IDs show **Unknown relation: …**, retain target navigation and allow removal. Incompatible manual links remain preserved and show a reason. There is no inverse persistence, cardinality engine or automatic cleanup.
+
 ## Reusable types and properties
 
 Open **Thought Craft: Manage entity types** from the Command Palette, from Thought Craft settings, or through **Manage Character properties** in Focus. Select a type to edit its label/folder and reusable properties. **Create type** accepts a display name, normalized stable ID and editable folder name. No automatic English pluralization is applied: for Quest, enter `Quests` explicitly if desired. Renaming Quest to Mission leaves `bs_type: quest` unchanged.
@@ -159,7 +187,7 @@ See [architecture](docs/architecture.md) for the boundaries and persistence life
 
 ## Relationships
 
-Focus has a compact **Relationships** section below the local properties. **+ Add relation** opens a searchable target list showing title, type and a short UUID for disambiguation. Choose a target and one of:
+Focus has a compact **Relationships** section below the local properties. **+ Add relation** opens a searchable target list showing title, entity type, Workspace and a short UUID for disambiguation. Choose a relation type first, then a compatible target. Universal relations are:
 
 - Related to (`related-to`)
 - Supports (`supports`)
@@ -173,20 +201,20 @@ Each relation has its own UUID and timestamp. `target_entity_id` contains an **e
 
 Renaming either file changes display titles/paths without breaking the relationship. Deleting a target leaves the source's stored relation intact; Focus displays **Unavailable target** until the user removes the edge or restores that UUID. Deleting the source removes its incoming appearances from the index without modifying any target note.
 
-Exact source/type/target duplicates and self-relations are rejected in the domain/repository, including concurrent local additions. A different relation type to the same target is allowed. Malformed, unknown, self-referencing or duplicated external definitions are reported and ignored for display, but remain in the source YAML. A malformed `bs_relations` container must be repaired manually before editing it. Removal checks the relation ID and expected definition, preserving neighboring entries and all unrelated data.
+Exact source/type/target duplicates and self-relations are rejected in the domain/repository, including concurrent local additions. A different relation type to the same target is allowed. Unknown relation IDs remain displayed with target resolution and explicit removal. Workspace-incompatible manual links are preserved and marked incompatible. Malformed, self-referencing or duplicated external entries are reported and ignored for display, while remaining in the source YAML. A malformed `bs_relations` container must be repaired manually before editing it. Removal checks the relation ID and expected definition, preserving neighboring entries and all unrelated data.
 
 Incoming lookup currently scans the indexed entities and relations. This is an intentional M2 choice for early personal-vault usage, not a scale benchmark. No reverse-edge database or dual entity/path map is maintained.
 
 ## Create From
 
-From any Focus View, choose **Create from…**, select any active registered entity type, including custom types, enter a title and optional initial content, and confirm. Thought Craft:
+From any Focus View, choose **Create from…**, select an active global entity type enabled in the source Workspace, including custom types, enter a title and optional initial content, and confirm. Thought Craft:
 
 1. Creates a real Markdown file with a new entity UUID and the selected type.
-2. Inherits the source's workspace, even if the default capture workspace is different.
+2. Inherits the source's workspace, even if the active UI Workspace is different.
 3. Writes one `originated-from` relation on the **new entity**, targeting the original UUID.
 4. Adds the new entity to the index and opens it in the same generic Focus experience.
 
-The original note is not rewritten. It gains an incoming appearance derived from the index, not a mirrored relation. Source properties and body are not automatically copied; the new entity starts with its supplied content, automatically shows its type’s reusable fields, and can receive its own local properties. Schema defaults are not written during creation. Retired and unknown types are excluded from the creation picker, while existing entities remain accessible.
+The original note is not rewritten. It gains an incoming appearance derived from the index, not a mirrored relation. Creation is validated by both the application and repository, including programmatic calls. Source properties and body are not automatically copied; the new entity starts with its supplied content, automatically shows its type’s reusable fields, and can receive its own local properties. Schema defaults are not written during creation. Retired and unknown types are excluded from the creation picker, while existing entities remain accessible.
 
 ## Architecture
 
@@ -199,7 +227,7 @@ src/
     property-schema.ts                      Reusable field definitions and value resolution
     entity-type.ts                          Open type IDs, reusable definitions and built-in presentation seeds
     entity-relation.ts                      Directed UUID edges and validation
-    workspace.ts                            Workspace identifier only
+    workspace.ts                            Workspace and custom relation definitions
   application/
     capture-idea.ts                          Validate input, generate UUID and timestamp
     open-entity.ts                           Resolve identity to current note path
@@ -208,6 +236,8 @@ src/
     entity-relations.ts                      Relation write intentions
     entity-type-registry.ts                  Global schema lookup, mutations and subscriptions
     entity-schema-values.ts                  Explicit schema value write intentions
+    workspace-registry.ts                    Workspace configuration and active context
+    relation-type-registry.ts                Universal/Workspace relation resolution and validation
   infrastructure/
     frontmatter-mapper.ts                    Validate/read bs_ metadata; write bs_ fields
     property-mapper.ts                       Parse, serialize and mutate individual definitions
@@ -217,7 +247,8 @@ src/
     entity-index.ts                          Disposable observable in-memory projection
   settings/
     settings.ts                             Defaults, validation, persisted-settings parsing
-    settings-tab.ts                          Capture settings and Type Manager entry
+    settings-tab.ts                          Capture folder and configuration manager entries
+    workspace-migration.ts                   M3-to-M4 configuration-only migration
   shared/
     note-path.ts                            Pure title, filename and path logic
     entity-path.ts                          Backward-compatible sibling destinations
@@ -233,14 +264,16 @@ src/
     focus/relationships.tsx                  Compact outgoing and derived incoming rows
     focus/add-relation-modal.ts              Searchable, keyboard-accessible target picker
     focus/create-from-modal.ts               Registry-driven type/title/content creation
-    types/type-manager-modal.tsx             Native modal with React schema forms
+    types/type-manager-modal.tsx             Native modal with global schema forms
+    workspaces/workspace-manager-modal.tsx    Workspace types and relation configuration
+    workspaces/workspace-switcher.tsx         Compact active Workspace selection
 ```
 
 ### Decisions
 
 - **Markdown is authoritative.** There is no database, entity JSON file or bulk note migration. Only reusable definitions are versioned in plugin configuration. Disabling/uninstalling the plugin leaves readable notes.
 - **Frontmatter uses the host API.** New files begin with an empty frontmatter envelope. `FileManager.processFrontMatter()` adds the metadata, preserving the Markdown body, including user input that itself contains `---` and YAML-looking text. If this API fails, the original text remains in the created file and the capture modal reports its recovery path.
-- **The index is a projection.** It remains a simple UUID-keyed map. Entities include parsed local properties, relations and their issues, plus raw schema values. Schema lookup and notifications belong to the injected registry; EntityIndex remains unchanged in M3. Outgoing queries resolve UUID targets; incoming queries scan current entities. Changes notify Inbox and Focus; the initial scan also announces readiness so a restored Focus tab can distinguish loading from a missing entity.
+- **The index is a projection.** It remains a simple UUID-keyed map. Entities include parsed local properties, relations and their issues, plus raw schema values. Schema lookup and notifications belong to the injected registry; EntityIndex remains unchanged in M4; Workspace filtering scans the existing Inbox projection. Outgoing queries resolve UUID targets; incoming queries scan current entities. Changes notify Inbox and Focus; the initial scan also announces readiness so a restored Focus tab can distinguish loading from a missing entity.
 - **Initialization waits for layout-ready.** Event handlers are attached after layout initialization, then Markdown notes are read in small asynchronous batches. This avoids treating initialization `create` events as new captures.
 - **External changes use Vault events.** Create/modify read the current file via the Vault API and parse frontmatter using Obsidian's parser. Delete removes the path; rename updates paths and titles without generating new IDs. Folder operations use path boundaries so `Ideas` never matches `Ideas2`.
 - **Stale reads cannot resurrect renamed/deleted files.** Per-path revisions plus current-file checks reject obsolete asynchronous read results. All Vault listeners use `registerEvent`; repository and React cleanup are registered with the plugin lifecycle.
@@ -258,19 +291,20 @@ npm run test:obsidian
 npm run test:obsidian:m1
 npm run test:obsidian:m2
 npm run test:obsidian:m3
+npm run test:obsidian:m4
 ```
 
-These opt-in Linux checks open a **real Obsidian process**, using isolated application profiles and disposable vaults under `.artifacts/`. They enable only the locally built plugin. M0 covers capture and synchronization; M1 covers Focus and custom properties; M2 covers relations, Create From, generic types, malformed external entries, dangling targets and restarts. M3 covers type/schema configuration, all five value kinds, virtual defaults, legacy values, retirement, custom folders, unknown types and configuration loss/restoration. They do not use your normal Obsidian profile or vaults. Each closes its own test process after the run. A Linux desktop session is required.
+These opt-in Linux checks open a **real Obsidian process**, using isolated application profiles and disposable vaults under `.artifacts/`. They enable only the locally built plugin. M0 covers capture and synchronization; M1 covers Focus and custom properties; M2 covers relations, Create From, generic types, malformed external entries, dangling targets and restarts. M3 covers type/schema configuration, all five value kinds, virtual defaults, legacy values, retirement, custom folders, unknown types and configuration loss/restoration. M4 covers Workspace migration/switching, creation restrictions, custom relations, cross-Workspace policies, compatibility feedback and retirement. They do not use your normal Obsidian profile or vaults. Each closes its own test process after the run. A Linux desktop session is required.
 
-Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md) and [M3 validation](docs/m3-validation.md) for results and manual checklists.
+Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md), [M3 validation](docs/m3-validation.md) and [M4 validation](docs/m4-validation.md) for results and manual checklists.
 
-## M3 limitations and later milestones
+## M4 limitations and later milestones
 
 Focus previews Markdown; editing the body uses Obsidian’s native note editor. Text fields remain single-line. A malformed schema-values container must be repaired in Markdown; orphaned values are shown read-only and can be recovered by restoring the schema or edited in Markdown. Invalid individual type definitions are preserved in configuration and reported; repair those definitions in `data.json` while the plugin is disabled. Configuration changes made outside the UI take effect on plugin reload. Back up plugin configuration alongside the vault when moving reusable definitions between machines.
 
 Type IDs, property keys and property types cannot be changed after creation through the UI. Type/property retirement is reversible; destructive schema deletion and automatic value migrations are deliberately unavailable. Schema ordering follows insertion order; there is no drag-and-drop ordering. Incoming relations still use a scan. Externally duplicated entity UUIDs still mean one identity and need manual repair when making independent copies. Only the current Linux Obsidian version was validated; mobile, other platforms and older versions require separate checks.
 
-M3 definitions are **global to this vault/plugin configuration**. Workspace scoping, custom relation schemas, specialized entity screens, boards, timeline/graph views, evaluation profiles and formulas remain deferred. M4 has not been started.
+Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized story/project screens, boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M5 has not been started.
 
 ## Files added
 
@@ -278,6 +312,6 @@ M3 definitions are **global to this vault/plugin configuration**. Workspace scop
 - Manifest and compatibility metadata: `manifest.json`, `versions.json`.
 - Tooling: `package.json`, `package-lock.json`, `tsconfig.json`, `esbuild.config.mjs`, `eslint.config.mjs`, `vitest.config.ts`, `.gitignore`.
 - Focused unit tests: `tests/*.test.ts`.
-- Development installation and real-app checks: `scripts/install-dev.mjs`, `scripts/smoke-obsidian.mjs`, `scripts/smoke-m1.mjs`, `scripts/smoke-m2.mjs`, `scripts/smoke-m3.mjs`.
-- Documentation: `AGENTS.md`, this README, and `docs/m0-validation.md`, `docs/m1-validation.md`, `docs/m2-validation.md`, `docs/m3-validation.md`, `docs/architecture.md`.
+- Development installation and real-app checks: `scripts/install-dev.mjs`, `scripts/smoke-obsidian.mjs`, `scripts/smoke-m1.mjs`, `scripts/smoke-m2.mjs`, `scripts/smoke-m3.mjs`, `scripts/smoke-m4.mjs`.
+- Documentation: `AGENTS.md`, this README, and `docs/m0-validation.md`, `docs/m1-validation.md`, `docs/m2-validation.md`, `docs/m3-validation.md`, `docs/m4-validation.md`, `docs/architecture.md`.
 - Generated local artifacts: `main.js` and ignored `.artifacts/` evidence. These are not source files.

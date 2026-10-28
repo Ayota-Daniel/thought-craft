@@ -1,7 +1,7 @@
+import { isEntityType } from './entity-type';
 import { isTimestamp, isUuid } from '../shared/metadata-validation';
 
-export type RelationType =
-  'related-to' | 'supports' | 'alternative-to' | 'depends-on' | 'originated-from';
+export type RelationType = string;
 
 export const RELATION_TYPES: Readonly<Record<RelationType, string>> = {
   'related-to': 'Related to',
@@ -23,8 +23,9 @@ export interface NewRelation {
   targetEntityId: string;
 }
 
+/** Syntax only: missing Workspace configuration must not hide stored relation IDs. */
 export function isRelationType(value: unknown): value is RelationType {
-  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(RELATION_TYPES, value);
+  return isEntityType(value);
 }
 
 export function validateRelation(relation: EntityRelation): void {
@@ -32,7 +33,7 @@ export function validateRelation(relation: EntityRelation): void {
     throw new Error('Relations need their own UUID and a target entity UUID.');
   }
   if (!isRelationType(relation.type)) {
-    throw new Error('Choose a supported relation type.');
+    throw new Error('Use a safe relation type ID.');
   }
   if (!isTimestamp(relation.createdAt)) {
     throw new Error('A relation needs a valid creation timestamp.');

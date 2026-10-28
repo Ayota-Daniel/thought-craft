@@ -1,3 +1,5 @@
+import type { WorkspaceRegistry } from '../application/workspace-registry';
+import type { RelationTypeRegistry } from '../application/relation-type-registry';
 import { getFrontMatterInfo, normalizePath, parseYaml, TFile, TFolder, type App } from 'obsidian';
 import type { EntityWriter, NewEntity } from '../application/create-entity';
 import type { EntityRelationWriter } from '../application/entity-relations';
@@ -37,6 +39,8 @@ export class ObsidianEntityRepository
     private index: EntityIndex,
     private getSettings: () => BrainstormSettings,
     private registry: EntityTypeRegistry,
+    private workspaces: WorkspaceRegistry,
+    private relationTypes: RelationTypeRegistry,
   ) {}
 
   dispose(): void {
@@ -123,12 +127,8 @@ export class ObsidianEntityRepository
         'A new entity needs valid identity, type, title, workspace and creation time.',
       );
     }
-    const validatedRelations: EntityRelation[] = [];
-    for (const relation of input.relations) {
-      validateRelation(relation);
-      validateNewRelation(input.id, relation, validatedRelations);
-      validatedRelations.push(relation);
-    }
+    this.validateCreation(input);
+    const validatedRelations = input.relations;
 
     const folder = normalizePath(
       folderForEntity(
@@ -179,6 +179,7 @@ export class ObsidianEntityRepository
       await this.app.fileManager.processFrontMatter(
         file,
         (frontmatter: Record<string, unknown>) => {
+          this.validateCreation(input);
           writeEntityFrontmatter(frontmatter, entity);
           if (entity.relations.length > 0) {
             frontmatter.bs_relations = entity.relations.map(serializeRelation);
@@ -246,9 +247,15 @@ export class ObsidianEntityRepository
     };
 
     return this.mutateMetadata(sourceEntityId, (frontmatter) => {
-      if (!this.index.getById(relation.targetEntityId)) {
+      const source = entityFromFrontmatter(
+        frontmatter,
+        this.index.getById(sourceEntityId)?.filePath ?? 'Entity.md',
+      );
+      const target = this.index.getById(relation.targetEntityId);
+      if (!source || !target) {
         throw new Error('The target entity is no longer available.');
       }
+      this.relationTypes.validateNew(source, target, relation.type);
       addEntityRelation(frontmatter, sourceEntityId, relation);
     });
   }
@@ -310,6 +317,21 @@ export class ObsidianEntityRepository
 
     void operation.then(cleanUp, cleanUp);
     return operation;
+  }
+
+  private validateCreation(input: NewEntity): void {
+    this.workspaces.validateCreation(input.workspaceId, input.type, this.registry);
+    const validated: EntityRelation[] = [];
+    for (const relation of input.relations) {
+      validateRelation(relation);
+      validateNewRelation(input.id, relation, validated);
+      const target = this.index.getById(relation.targetEntityId);
+      if (!target) {
+        throw new Error('The relation target is unavailable.');
+      }
+      this.relationTypes.validateNew(input, target, relation.type);
+      validated.push(relation);
+    }
   }
 
   private invalidate(path: string): void {

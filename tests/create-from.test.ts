@@ -1,3 +1,4 @@
+import { workspacesForTypes } from './workspace-fixtures';
 import { EntityTypeRegistry } from '../src/application/entity-type-registry';
 import { describe, expect, it, vi } from 'vitest';
 import { createFrom, type NewEntity } from '../src/application/create-entity';
@@ -44,6 +45,7 @@ describe('Create From', () => {
         index,
         writer,
         new EntityTypeRegistry(),
+        workspacesForTypes(new EntityTypeRegistry()),
       );
 
       expect(created.id).not.toBe(source.id);
@@ -72,11 +74,25 @@ describe('Create From', () => {
     const input = { type: 'character' as const, title: 'Noah', content: '' };
 
     await expect(
-      createFrom(source.id, input, index, writer, new EntityTypeRegistry()),
+      createFrom(
+        source.id,
+        input,
+        index,
+        writer,
+        new EntityTypeRegistry(),
+        workspacesForTypes(new EntityTypeRegistry()),
+      ),
     ).rejects.toThrow('no longer available');
     index.upsert(source);
     await expect(
-      createFrom(source.id, { ...input, title: ' ' }, index, writer, new EntityTypeRegistry()),
+      createFrom(
+        source.id,
+        { ...input, title: ' ' },
+        index,
+        writer,
+        new EntityTypeRegistry(),
+        workspacesForTypes(new EntityTypeRegistry()),
+      ),
     ).rejects.toThrow('title');
     expect(writer.createEntity).not.toHaveBeenCalled();
   });

@@ -20,7 +20,6 @@ export class ThoughtCraftSettingsTab extends PluginSettingTab {
         }),
       );
     let folder = this.plugin.settings.entitiesFolder;
-    let workspace = this.plugin.settings.defaultWorkspace;
     new Setting(this.containerEl)
       .setName('Idea folder')
       .setDesc('Vault-relative folder for newly captured ideas. Existing notes stay in place.')
@@ -33,15 +32,10 @@ export class ThoughtCraftSettingsTab extends PluginSettingTab {
           }),
       );
     new Setting(this.containerEl)
-      .setName('Default workspace')
-      .setDesc('Workspace identifier attached to new ideas.')
-      .addText((text) =>
-        text
-          .setValue(workspace)
-          .setPlaceholder('default')
-          .onChange((value) => {
-            workspace = value;
-          }),
+      .setName('Workspaces')
+      .setDesc(`Capture uses the active workspace: ${this.plugin.workspaces.getActive().label}.`)
+      .addButton((button) =>
+        button.setButtonText('Manage workspaces').onClick(() => this.plugin.openWorkspaceManager()),
       );
     new Setting(this.containerEl).setName('Save capture settings').addButton((button) =>
       button
@@ -51,7 +45,7 @@ export class ThoughtCraftSettingsTab extends PluginSettingTab {
           try {
             const settings = validateSettings({
               entitiesFolder: folder,
-              defaultWorkspace: workspace,
+              defaultWorkspace: this.plugin.settings.defaultWorkspace,
             });
             await this.plugin.updateSettings(settings);
             new Notice('Thought Craft settings saved.');

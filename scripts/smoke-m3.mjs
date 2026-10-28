@@ -477,6 +477,10 @@ try {
   await addSchema('Difficulty', 'rating', { max: 5 });
   await addSchema('Status', 'select', { options: ['open', 'complete'] });
   await closeManager();
+  await evaluate(
+    "window.tcEnableQuest=false; app.plugins.plugins['thought-craft'].workspaces.update('novel',{enabledEntityTypeIds:['idea','character','scene','location','project','quest']}).then(() => {window.tcEnableQuest=true;}); true",
+  );
+  await page.waitForFunction(() => window.tcEnableQuest);
   const quest = await createDerived(
     source.id,
     'quest',
@@ -599,7 +603,7 @@ try {
   const configPath = join(pluginFolder, 'data.json');
   const savedConfig = await readFile(configPath, 'utf8');
   const config = JSON.parse(savedConfig);
-  assert.equal(config.configVersion, 3);
+  assert.equal(config.configVersion, 4);
   assert.equal(config.entityTypes.filter((type) => type.id === 'quest').length, 1);
   assert.equal(config.entities, undefined);
   assert.equal(config.bs_schema_values, undefined);

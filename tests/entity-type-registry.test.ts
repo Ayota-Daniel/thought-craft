@@ -1,3 +1,4 @@
+import { workspacesForTypes } from './workspace-fixtures';
 import { describe, expect, it, vi } from 'vitest';
 import { EntityTypeRegistry, typeIdForLabel } from '../src/application/entity-type-registry';
 import {
@@ -225,6 +226,7 @@ describe('registry-driven generic creation', () => {
       index,
       writer,
       registry,
+      workspacesForTypes(registry),
     );
     expect(created.id).not.toBe(source.id);
     expect(created.filePath).toBe('Custom/Quests/Find Mira.md');
@@ -244,6 +246,7 @@ describe('registry-driven generic creation', () => {
         index,
         writer,
         registry,
+        workspacesForTypes(registry),
       ),
     ).rejects.toThrow();
     await expect(
@@ -253,6 +256,7 @@ describe('registry-driven generic creation', () => {
         index,
         writer,
         registry,
+        workspacesForTypes(registry),
       ),
     ).rejects.toThrow();
     expect(source.schemaValues).toBeUndefined();

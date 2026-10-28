@@ -1,3 +1,7 @@
+import { WorkspaceRegistry } from './application/workspace-registry';
+import { RelationTypeRegistry } from './application/relation-type-registry';
+import { migrateWorkspaces } from './settings/workspace-migration';
+import { WorkspaceManagerModal } from './ui/workspaces/workspace-manager-modal';
 import type { EntityTypeDefinition } from './domain/entity-type';
 import { EntityTypeRegistry } from './application/entity-type-registry';
 import { TypeManagerModal } from './ui/types/type-manager-modal';
@@ -18,6 +22,9 @@ export default class ThoughtCraftPlugin extends Plugin {
   settings: BrainstormSettings = { ...DEFAULT_SETTINGS };
   readonly entityIndex = new EntityIndex();
   registry!: EntityTypeRegistry;
+  workspaces!: WorkspaceRegistry;
+  relationTypes!: RelationTypeRegistry;
+  private workspaceManager: WorkspaceManagerModal | null = null;
   private configWrites: Promise<void> = Promise.resolve();
   private typeManager: TypeManagerModal | null = null;
   private repository!: ObsidianEntityRepository;
@@ -34,12 +41,32 @@ export default class ThoughtCraftPlugin extends Plugin {
         'Some entity type definitions could not be read. Their configuration is preserved.',
       );
     }
+    const migrated = migrateWorkspaces(
+      data,
+      this.registry.getActive().map((type) => type.id),
+    );
+    this.workspaces = new WorkspaceRegistry(
+      migrated.workspaces,
+      migrated.activeWorkspaceId,
+      this.registry.getActive().map((type) => type.id),
+      (configuration) =>
+        this.saveConfiguration({
+          workspaces: [...configuration.workspaces, ...this.workspaces.unreadableDefinitions],
+          activeWorkspaceId: configuration.activeWorkspaceId,
+        }),
+    );
+    this.relationTypes = new RelationTypeRegistry(this.workspaces, this.registry);
+    if (this.workspaces.issues.length) {
+      new Notice('Some workspace definitions could not be read. Their configuration is preserved.');
+    }
     const ideaFolderName = this.settings.entitiesFolder.split('/').pop() ?? 'Ideas';
     if (this.registry.get('idea')?.folderName !== ideaFolderName) {
       await this.registry.updateType('idea', { folderName: ideaFolderName });
     }
     await this.saveConfiguration({
       ...this.settings,
+      workspaces: [...this.workspaces.getAll(), ...this.workspaces.unreadableDefinitions],
+      activeWorkspaceId: this.workspaces.getActive().id,
       entityTypes: [...this.registry.getAll(), ...this.registry.unreadableDefinitions],
     });
     this.repository = new ObsidianEntityRepository(
@@ -47,12 +74,17 @@ export default class ThoughtCraftPlugin extends Plugin {
       this.entityIndex,
       () => this.settings,
       this.registry,
+      this.workspaces,
+      this.relationTypes,
     );
     this.register(() => this.repository.dispose());
     this.registerView(INBOX_VIEW_TYPE, (leaf) => {
       const view = new InboxView(
         leaf,
         this.entityIndex,
+        this.workspaces,
+        this.registry,
+        () => this.openWorkspaceManager(),
         () => this.openCapture(),
         (id) => {
           void this.openEntityFocus(id);
@@ -82,14 +114,22 @@ export default class ThoughtCraftPlugin extends Plugin {
             this.entityIndex,
             this.repository,
             this.registry,
+            this.workspaces,
           );
           await this.openEntityFocus(created.id);
         },
         this.registry,
         (typeId) => this.openTypeManager(typeId),
+        this.workspaces,
+        this.relationTypes,
       );
       this.register(() => view.disposeFocus());
       return view;
+    });
+    this.addCommand({
+      id: 'manage-workspaces',
+      name: 'Manage workspaces',
+      callback: () => this.openWorkspaceManager(),
     });
     this.addCommand({
       id: 'manage-entity-types',
@@ -154,6 +194,7 @@ export default class ThoughtCraftPlugin extends Plugin {
     this.disposed = true;
     this.captureModal?.close();
     this.typeManager?.close();
+    this.workspaceManager?.close();
   }
 
   async updateSettings(settings: BrainstormSettings): Promise<void> {
@@ -162,6 +203,21 @@ export default class ThoughtCraftPlugin extends Plugin {
     if (this.registry.get('idea')?.folderName !== folderName) {
       await this.registry.updateType('idea', { folderName });
     }
+  }
+
+  openWorkspaceManager(): void {
+    if (this.workspaceManager) {
+      return;
+    }
+    this.workspaceManager = new WorkspaceManagerModal(
+      this.app,
+      this.workspaces,
+      this.registry,
+      () => {
+        this.workspaceManager = null;
+      },
+    );
+    this.workspaceManager.open();
   }
 
   openTypeManager(typeId?: string): void {
@@ -202,13 +258,13 @@ export default class ThoughtCraftPlugin extends Plugin {
       .then(async () => {
         const raw: unknown = await this.loadData();
         const existing = isRecord(raw) ? raw : {};
-        if (typeof existing.configVersion === 'number' && existing.configVersion > 3) {
+        if (typeof existing.configVersion === 'number' && existing.configVersion > 4) {
           throw new Error('This configuration was created by a newer Thought Craft version.');
         }
         const next = {
           ...existing,
           ...(typeof changes === 'function' ? changes(existing) : changes),
-          configVersion: 3,
+          configVersion: 4,
         };
         await this.saveData(next);
         this.settings = settingsFromData(next);
@@ -221,12 +277,12 @@ export default class ThoughtCraftPlugin extends Plugin {
     if (this.disposed || this.captureModal) {
       return;
     }
-    const workspace = this.settings.defaultWorkspace;
+    const workspace = this.workspaces.getActive();
     this.captureModal = new QuickCaptureModal(
       this.app,
-      workspace,
+      workspace.label,
       async (content) => {
-        await captureIdea(content, workspace, this.repository);
+        await captureIdea(content, workspace.id, this.repository);
         new Notice('Idea captured.');
         void this.showInbox();
       },
