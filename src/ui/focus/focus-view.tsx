@@ -3,6 +3,7 @@ import {
   getFrontMatterInfo,
   ItemView,
   MarkdownRenderer,
+  setIcon,
   TFile,
   type ViewStateResult,
   type WorkspaceLeaf,
@@ -81,11 +82,29 @@ export class FocusView extends ItemView {
     this.contentEl.addClass('tc-focus');
 
     const toolbar = this.contentEl.createDiv({ cls: 'tc-focus-toolbar' });
-    const backButton = toolbar.createEl('button', { text: 'Back to inbox' });
+    const backButton = toolbar.createEl('button', {
+      cls: 'tc-focus-back',
+      attr: { type: 'button' },
+    });
+    const backIcon = backButton.createSpan({ attr: { 'aria-hidden': 'true' } });
+    setIcon(backIcon, 'arrow-left');
+    backButton.createSpan({ text: 'Back to inbox' });
     backButton.addEventListener('click', this.showInbox);
-    const createButton = toolbar.createEl('button', { text: 'Create from…' });
+
+    const actions = toolbar.createDiv({ cls: 'tc-focus-actions' });
+    const createButton = actions.createEl('button', {
+      text: 'Create from…',
+      cls: 'tc-focus-create',
+      attr: { type: 'button' },
+    });
     createButton.addEventListener('click', () => this.showCreateDialog());
-    const markdownButton = toolbar.createEl('button', { text: 'Open Markdown note' });
+    const markdownButton = actions.createEl('button', {
+      cls: 'tc-focus-open-markdown',
+      attr: { type: 'button' },
+    });
+    const markdownIcon = markdownButton.createSpan({ attr: { 'aria-hidden': 'true' } });
+    setIcon(markdownIcon, 'file-pen-line');
+    markdownButton.createSpan({ text: 'Open Markdown note' });
     markdownButton.addEventListener('click', () => {
       if (this.entityId) {
         this.openMarkdown(this.entityId);

@@ -184,8 +184,9 @@ button.tc-inbox-row:focus-visible {
 }
 .tc-focus-toolbar {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 36px;
 }
@@ -261,14 +262,69 @@ button.tc-relation-remove:hover {
   padding: 8px 4px;
   white-space: normal;
 }
+.tc-focus-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin-inline-start: auto;
+}
 .tc-focus-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  height: auto;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--button-radius, 5px);
+  font-size: var(--font-ui-small);
+  line-height: 1.4;
+  white-space: normal;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  box-shadow: none;
+  cursor: pointer;
+}
+.tc-focus-toolbar button svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.tc-focus-toolbar button.tc-focus-back {
+  justify-content: flex-start;
+  border-color: transparent;
   color: var(--text-muted);
   background: transparent;
-  box-shadow: none;
 }
-.tc-focus-toolbar button:hover {
+.tc-focus-toolbar button.tc-focus-create {
+  border-color: var(--interactive-accent);
   color: var(--text-normal);
+  background: var(--background-secondary);
+  font-weight: 500;
+}
+.tc-focus-toolbar button:not(:disabled):hover {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border-hover);
   background: var(--background-modifier-hover);
+}
+.tc-focus-toolbar button.tc-focus-create:not(:disabled):hover {
+  color: var(--text-normal);
+  border-color: var(--interactive-accent-hover);
+}
+.tc-focus-toolbar button:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 3px;
+}
+.tc-focus-toolbar button:disabled {
+  opacity: var(--disabled-opacity, 0.5);
+  cursor: not-allowed;
 }
 .tc-focus-layout {
   display: grid;
