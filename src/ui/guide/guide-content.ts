@@ -37,7 +37,7 @@ export const GUIDE_TOPICS = {
   Workspaces:
     'A Workspace scopes your current list and board. Switching Workspace does not move notes. Each Workspace enables entity types and may define custom relations.',
   Brainstorm:
-    'Add existing thoughts or create an idea. Drag empty canvas to select; Space-drag or middle-drag pans. Groups persist spatial organization; selection is temporary. Brainstorm around enters Focus: roots plus their direct neighbors. Show all restores every placed card. Connected ideas link new idea → chosen root.',
+    'Create an idea or use Add Existing to place notes. Rectangle-select cards, then drag any selected card to move the block. Groups persist spatial organization; selection is temporary. Brainstorm around enters Focus: roots plus direct neighbors. Show all restores every placed card. Handles or Connect create real relations; connected ideas link new idea → chosen root. Pan and zoom without changing card positions.',
   Relations:
     'Relationships are directed: A → kind → B. They are stored once on A; incoming links are derived. Removing a card or group does not remove relationships. Trashing a target leaves a readable unavailable link in the source.',
 } as const;

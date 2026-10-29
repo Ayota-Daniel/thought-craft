@@ -1,4 +1,4 @@
-# Thought Craft architecture at M6.5
+# Thought Craft architecture at M6.6
 
 ## Separate responsibilities
 
@@ -150,3 +150,18 @@ The Focus row has independently removable root chips, + Add focus and Show all. 
 `WorkspaceTabs` supplies a shared roving tablist with arrow/Home/End navigation and unique tab/panel labels across the mounted native ItemViews. Native leaf navigation preserves Workspace and view-local state. Guide content lives in a small UI module and native modal, with six short core topics and five universal relation descriptions/examples. Relations are documented as source-owned and directed. Help buttons use explicit HTML button attributes so opening help cannot submit the underlying form; Escape returns to the intact draft. No documentation website, new relation definitions or registry rewrite is introduced.
 
 Configuration remains version 6: M6.5 adds no persisted schema. Search, sort, filter, selection, Focus and Guide topic are temporary. No new dependency, EntityIndex map, reverse-edge index or application state framework is introduced. Full canvas assistive-technology/mobile coverage, generic Archive, advanced custom-property filtering, saved queries, dedicated Parking Lot, nested groups, auto-layout, specialized Story features and M7 remain deferred.
+
+
+## M6.6: paged Inbox and floating controls
+
+The existing query implementation names its stages explicitly: Workspace candidates, searched entities, filtered entities, sorted entities. `application/inbox-pagination.ts` takes that completed result and slices one UI page. Default size is 50, constrained to 25/50/100. Helpers clamp out-of-range page requests and produce a bounded page-button list with ellipses. This is not database paging and does not change EntityIndex. Only current-page rows are mounted; no virtualization is introduced.
+
+Inbox owns temporary page/size state. Search/filter/sort/size/Workspace changes return to page 1 and clear selection. External data changes clamp the page; page reconciliation prevents a stale out-of-range index from reappearing when results grow. Selection safety intersects synchronously with current-page UUIDs before batch actions; Select this page and range selection use only those rendered IDs. Pagination reports a result range, while the heading keeps the full Workspace candidate count and filtered count remains contextual. No query/page/selection data is persisted.
+
+`ui/shared/floating-popover.tsx` wraps the platform’s auto Popover API. Native top-layer rendering avoids clipping by Obsidian’s scrollable panes or parent layout, and native light-dismiss supplies outside-click behavior. The invoker relationship, dialog label and explicit Escape focus restoration preserve keyboard access. `popover-placement.ts` computes a small fixed viewport placement, flipping above when below has less room, shifting away from edges and bounding height/width. A resize observer and captured external scroll/resize events reposition it; internal popover scroll does not restart positioning, and an off-screen anchor closes it. No external floating framework or relation/Workspace state boundary is added.
+
+Row surfaces belong to the existing li, covering checkbox, main content, timestamp and native menu. Child buttons remain siblings with independent event handlers, never nested click delegation. Hover/focus/selection styling uses host variables; selected rows retain an accent edge without hover. Container queries adapt timestamps/pagination to a narrow native pane inside a wide desktop window.
+
+The canvas toolbar gains Controls, using a native modal managed by existing BrainstormView dialog ownership. A shared textual control table is reused in Guide → Brainstorm. It documents the actual XYFlow configuration: rectangle selection, additive clicks, right/middle/Space pan, zoom, multi-card drag and focused-card keyboard opening/movement. The former permanent instruction paragraph is removed. Canvas configuration, Focus, groups, relations and board persistence are unchanged.
+
+M6.6 introduces no new dependency, persisted schema, migration, index or state framework. Configuration stays version 6. Full canvas assistive-technology/mobile/older-runtime validation, virtualization, database paging, advanced query features and all M7 work remain deferred.

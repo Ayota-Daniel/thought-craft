@@ -1,3 +1,5 @@
+import { paginateInbox, type InboxPageSize } from '../../application/inbox-pagination';
+import { InboxPagination } from './inbox-pagination';
 import type { WorkspaceRegistry } from '../../application/workspace-registry';
 import type { EntityTypeRegistry } from '../../application/entity-type-registry';
 import type { WorkspaceBoardStore } from '../../application/workspace-board-store';
@@ -36,10 +38,13 @@ export function Inbox(props: InboxProps) {
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<InboxFilters>(EMPTY_INBOX_FILTERS);
   const [sort, setSort] = useState<InboxSort>('newest');
+  const [pageSize, setPageSize] = useState<InboxPageSize>(50);
+  const [requestedPage, setRequestedPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const anchor = useRef<string | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const unsubscribe = [index, workspaces, types, boards].map((service) =>
       service.subscribe(() => refresh((n) => n + 1)),
@@ -47,8 +52,13 @@ export function Inbox(props: InboxProps) {
     return () => unsubscribe.forEach((stop) => stop());
   }, [index, workspaces, types, boards]);
   const active = workspaces.getActive();
+  useEffect(() => {
+    setRequestedPage(1);
+    setSelected([]);
+    anchor.current = null;
+  }, [active.id]);
   const all = index.getAll();
-  const entities = queryInbox(
+  const sortedEntities = queryInbox(
     all,
     active.id,
     search,
@@ -57,9 +67,30 @@ export function Inbox(props: InboxProps) {
     boards.getBoard(active.id),
     types,
   );
+  // Scope/search/filter/sort finish before slicing the current visible page.
+  const pagination = paginateInbox(sortedEntities, requestedPage, pageSize);
+  const entities = pagination.items;
+  const totalCandidates = inboxCandidates(all, active.id).length;
   const ids = entities.map((entity) => entity.id);
   const safeSelection = visibleSelection(selected, ids);
   const selectionKey = ids.join(',');
+  useEffect(() => {
+    setRequestedPage(pagination.page);
+  }, [pagination.page]);
+  function clearSelection(): void {
+    setSelected([]);
+    anchor.current = null;
+  }
+  function changeQuery(change: () => void): void {
+    change();
+    setRequestedPage(1);
+    clearSelection();
+  }
+  function changePage(page: number): void {
+    clearSelection();
+    setRequestedPage(page);
+    resultsRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }
   useEffect(() => {
     setSelected((current) => visibleSelection(current, selectionKey.split(',')));
   }, [selectionKey, active.id, version]);
@@ -67,8 +98,10 @@ export function Inbox(props: InboxProps) {
     .getAvailableEntityTypes(active.id, types)
     .some((type) => type.id === 'idea');
   function clear(): void {
-    setSearch('');
-    setFilters(EMPTY_INBOX_FILTERS);
+    changeQuery(() => {
+      setSearch('');
+      setFilters(EMPTY_INBOX_FILTERS);
+    });
   }
   function select(id: string, range: boolean): void {
     setSelected((current) =>
@@ -106,7 +139,7 @@ export function Inbox(props: InboxProps) {
         <div>
           <span className="tc-eyebrow">Thought Craft</span>
           <h1>
-            Inbox <span className="tc-count">{entities.length}</span>
+            Inbox <span className="tc-count">{totalCandidates}</span>
           </h1>
           <p>A place for thoughts before their next step.</p>
         </div>
@@ -119,15 +152,34 @@ export function Inbox(props: InboxProps) {
       </header>
       <InboxControls
         search={search}
-        setSearch={setSearch}
+        setSearch={(value) => changeQuery(() => setSearch(value))}
         filters={filters}
-        setFilters={setFilters}
+        setFilters={(value) => changeQuery(() => setFilters(value))}
         sort={sort}
-        setSort={setSort}
+        setSort={(value) => changeQuery(() => setSort(value))}
         types={availableTypes}
         clear={clear}
         empty={entities.length === 0}
       />
+      <div className="tc-inbox-result-summary" ref={resultsRef}>
+        {pagination.total > 0 && (
+          <label>
+            <input
+              type="checkbox"
+              aria-label="Select this page"
+              checked={safeSelection.length === ids.length}
+              onChange={(event) => {
+                setSelected(event.target.checked ? [...ids] : []);
+                anchor.current = null;
+              }}
+            />
+            Select this page
+          </label>
+        )}
+        {pagination.total !== totalCandidates && (
+          <span role="status">{pagination.total} results</span>
+        )}
+      </div>
       {safeSelection.length > 0 && (
         <div className="tc-inbox-batch" role="region" aria-label="Selected entity actions">
           <span role="status">{safeSelection.length} selected</span>
@@ -137,7 +189,7 @@ export function Inbox(props: InboxProps) {
           <button disabled={pending} onClick={() => props.trash(safeSelection)}>
             Move to trash
           </button>
-          <button onClick={() => setSelected([])}>Clear selection</button>
+          <button onClick={clearSelection}>Clear selection</button>
         </div>
       )}
       {error && (
@@ -181,6 +233,16 @@ export function Inbox(props: InboxProps) {
           ))}
         </ul>
       )}
+      <InboxPagination
+        {...pagination}
+        pageSize={pageSize}
+        changePage={changePage}
+        changeSize={(size) => {
+          setPageSize(size);
+          setRequestedPage(1);
+          clearSelection();
+        }}
+      />
       <footer className="tc-inbox-footer">
         Entities stay in your vault as ordinary Markdown notes.
       </footer>

@@ -222,9 +222,11 @@ async function enterFocus(number) {
   await delay(200);
 }
 async function filter(name, value) {
-  const details = inbox().locator('.tc-inbox-filters');
-  if (!(await details.evaluate((element) => element.open)))
-    await details.locator('summary').click();
+  const details = inbox().getByRole('dialog', { name: 'Inbox filters', exact: true });
+  if (!(await details.isVisible()))
+    await inbox()
+      .getByRole('button', { name: /^Filters/ })
+      .click();
   await details.getByLabel(name, { exact: true }).selectOption(value);
 }
 
@@ -309,7 +311,7 @@ try {
   await filter('Entity type', 'character');
   assert.equal(await inbox().locator('.tc-inbox-row').count(), 5);
   await inbox()
-    .locator('.tc-inbox-filters')
+    .getByRole('dialog', { name: 'Inbox filters', exact: true })
     .getByRole('checkbox', { name: 'Updated in the last 7 days', exact: true })
     .check();
   assert.equal(await inbox().locator('.tc-inbox-row').count(), 2);
@@ -322,7 +324,9 @@ try {
     .getByRole('heading', { name: 'No entities match these filters.', exact: true })
     .waitFor();
   await inbox().getByRole('button', { name: 'Clear filters', exact: true }).click();
-  await inbox().locator('.tc-inbox-filters summary').click();
+  await inbox()
+    .getByRole('button', { name: /^Filters/ })
+    .click();
   await page.screenshot({ path: join(run, 'inbox-dark.png') });
   checks.push(
     'Upgraded M6 layout is unchanged. A 35-entity Inbox searches titles/type labels case-insensitively, filters board/relation/type/recent state in combination, sorts and explains empty results. Hidden-by-search selections clear before batch actions.',

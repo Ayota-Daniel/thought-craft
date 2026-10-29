@@ -1,3 +1,4 @@
+import { CanvasControlsModal } from '../guide/canvas-controls-modal';
 import { ContextualCreateDialog } from './contextual-create-dialog';
 import { GroupDialog } from './group-dialog';
 import { ItemView, Modal, type WorkspaceLeaf } from 'obsidian';
@@ -30,6 +31,8 @@ export class BrainstormView extends ItemView {
     super(leaf);
     this.commands = {
       ...navigation,
+      showControls: () =>
+        this.showDialog(new CanvasControlsModal(this.app, () => this.clearDialog())),
       createIdea: (workspaceId, position) => this.createIdea(workspaceId, position),
       addExisting: (workspaceId, position) =>
         this.showDialog(

@@ -22,7 +22,8 @@
     "test:obsidian:m4": "npm run build && node scripts/smoke-m4.mjs",
     "test:obsidian:m5": "npm run build && node scripts/smoke-m5.mjs",
     "test:obsidian:m6": "npm run build && node scripts/smoke-m6.mjs",
-    "test:obsidian:m6-5": "npm run build && node scripts/smoke-m6-5.mjs"
+    "test:obsidian:m6-5": "npm run build && node scripts/smoke-m6-5.mjs",
+    "test:obsidian:m6-6": "npm run build && node scripts/smoke-m6-6.mjs"
   },
   "engines": {
     "node": ">=22"

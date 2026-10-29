@@ -42,30 +42,30 @@ export function queryInbox(
     if (entity.relations.length) related.add(entity.id);
     entity.relations.forEach((relation) => related.add(relation.targetEntityId));
   }
-  return inboxCandidates(entities, workspaceId)
-    .filter((entity) => {
-      if (
-        search &&
-        !`${entity.title} ${types.label(entity.type)}`.toLocaleLowerCase().includes(search)
-      )
-        return false;
-      if (filters.type && entity.type !== filters.type) return false;
-      const placed = Boolean(board.nodes[entity.id]);
-      if (filters.board === 'on' && !placed) return false;
-      if (filters.board === 'off' && placed) return false;
-      if (filters.relations === 'has' && !related.has(entity.id)) return false;
-      if (filters.relations === 'none' && related.has(entity.id)) return false;
-      if (filters.recent && Date.parse(entity.updatedAt) < now - 7 * 24 * 60 * 60 * 1000)
-        return false;
-      return true;
-    })
-    .sort((a, b) => {
-      let order = 0;
-      if (sort === 'newest') order = Date.parse(b.createdAt) - Date.parse(a.createdAt);
-      if (sort === 'oldest') order = Date.parse(a.createdAt) - Date.parse(b.createdAt);
-      if (sort === 'updated') order = Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
-      if (sort === 'az') order = a.title.localeCompare(b.title);
-      if (sort === 'za') order = b.title.localeCompare(a.title);
-      return order || a.id.localeCompare(b.id);
-    });
+  const workspaceEntities = inboxCandidates(entities, workspaceId);
+  const searchedEntities = workspaceEntities.filter(
+    (entity) =>
+      !search || `${entity.title} ${types.label(entity.type)}`.toLocaleLowerCase().includes(search),
+  );
+  const filteredEntities = searchedEntities.filter((entity) => {
+    if (filters.type && entity.type !== filters.type) return false;
+    const placed = Boolean(board.nodes[entity.id]);
+    if (filters.board === 'on' && !placed) return false;
+    if (filters.board === 'off' && placed) return false;
+    if (filters.relations === 'has' && !related.has(entity.id)) return false;
+    if (filters.relations === 'none' && related.has(entity.id)) return false;
+    if (filters.recent && Date.parse(entity.updatedAt) < now - 7 * 24 * 60 * 60 * 1000)
+      return false;
+    return true;
+  });
+  const sortedEntities = filteredEntities.sort((a, b) => {
+    let order = 0;
+    if (sort === 'newest') order = Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    if (sort === 'oldest') order = Date.parse(a.createdAt) - Date.parse(b.createdAt);
+    if (sort === 'updated') order = Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
+    if (sort === 'az') order = a.title.localeCompare(b.title);
+    if (sort === 'za') order = b.title.localeCompare(a.title);
+    return order || a.id.localeCompare(b.id);
+  });
+  return sortedEntities;
 }

@@ -18,6 +18,7 @@ export interface BoardServices {
 }
 
 export interface BoardCommands {
+  showControls: () => void;
   openFocus: (entityId: string) => void;
   showInbox: () => void;
   manageWorkspaces: () => void;

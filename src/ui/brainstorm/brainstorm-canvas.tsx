@@ -210,6 +210,7 @@ export function BrainstormCanvas({
         />
       )}
       <BrainstormToolbar
+        showControls={commands.showControls}
         canFitGroup={Boolean(
           state.groups.find((group) => group.id === selection?.id)?.entityIds.length,
         )}
@@ -348,10 +349,6 @@ export function BrainstormCanvas({
           </section>
         )}
       </div>
-      <p className="tc-board-hint">
-        Drag cards to arrange · Drag empty canvas to select · Space-drag or middle-drag to pan ·
-        Scroll to zoom · Ctrl/Cmd-click to select cards · Connect using handles or Connect…
-      </p>
     </div>
   );
 }

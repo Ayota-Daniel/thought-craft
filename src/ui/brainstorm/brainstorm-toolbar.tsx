@@ -23,6 +23,7 @@ interface BoardToolbarProps {
   create: () => void;
   addExisting: () => void;
   fit: () => void;
+  showControls: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   openSelected: () => void;
@@ -87,6 +88,7 @@ export function BrainstormToolbar(props: BoardToolbarProps) {
         )}
       </div>
       <div className="tc-board-viewport-controls" aria-label="Board viewport">
+        <button onClick={props.showControls}>Controls</button>
         <button onClick={props.fit}>Fit</button>
         <button aria-label="Zoom out" onClick={props.zoomOut}>
           −

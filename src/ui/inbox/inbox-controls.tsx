@@ -1,3 +1,4 @@
+import { FloatingPopover } from '../shared/floating-popover';
 import type { InboxFilters, InboxSort } from '../../application/inbox-query';
 
 export function InboxControls({
@@ -39,9 +40,8 @@ export function InboxControls({
           onChange={(event) => setSearch(event.target.value)}
         />
       </label>
-      <details className="tc-inbox-filters">
-        <summary>Filters{active ? ' · active' : ''}</summary>
-        <div>
+      <FloatingPopover label={`Filters${active ? ' · active' : ''}`}>
+        <div className="tc-inbox-filter-fields">
           <label>
             Entity type
             <select
@@ -88,7 +88,7 @@ export function InboxControls({
               <option value="none">No relations</option>
             </select>
           </label>
-          <label>
+          <label className="tc-filter-recent">
             <input
               type="checkbox"
               checked={filters.recent}
@@ -97,7 +97,7 @@ export function InboxControls({
             Updated in the last 7 days
           </label>
         </div>
-      </details>
+      </FloatingPopover>
       <label className="tc-inbox-sort">
         <span className="tc-visually-hidden">Sort entities</span>
         <select
