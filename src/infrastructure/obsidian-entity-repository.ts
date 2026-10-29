@@ -319,6 +319,34 @@ export class ObsidianEntityRepository
     return operation;
   }
 
+  /** Use Obsidian's vault trash explicitly, even if permanent deletion is configured elsewhere. */
+  trashEntity(entityId: string): Promise<void> {
+    const previous = this.metadataWrites.get(entityId) ?? Promise.resolve();
+    const operation = previous
+      .catch(() => undefined)
+      .then(async () => {
+        if (!this.active) throw new Error('Thought Craft is no longer active.');
+        const entity = this.index.getById(entityId);
+        const file = entity ? this.app.vault.getAbstractFileByPath(entity.filePath) : null;
+        if (!(file instanceof TFile)) throw new Error('This note is no longer available.');
+        const content = await this.app.vault.read(file);
+        const info = getFrontMatterInfo(content);
+        const current = info.exists
+          ? entityFromFrontmatter(parseYaml(info.frontmatter), file.path)
+          : undefined;
+        if (current?.id !== entityId)
+          throw new Error('The note identity changed. Reopen it before moving it to trash.');
+        await this.app.vault.trash(file, false);
+        this.removePath(file.path);
+      });
+    this.metadataWrites.set(entityId, operation);
+    const cleanup = () => {
+      if (this.metadataWrites.get(entityId) === operation) this.metadataWrites.delete(entityId);
+    };
+    void operation.then(cleanup, cleanup);
+    return operation;
+  }
+
   private validateCreation(input: NewEntity): void {
     this.workspaces.validateCreation(input.workspaceId, input.type, this.registry);
     const validated: EntityRelation[] = [];

@@ -1,4 +1,4 @@
-# Thought Craft — M6
+# Thought Craft — M6.5
 
 An Obsidian community plugin built around **Entity + Property + Relation**. Capture ideas, inspect local properties, connect entities by UUID, and create new entities from existing ones. Built-in and custom Entity Types share the same Focus View, reusable property schemas and UUID relations. Markdown remains the source of truth for entity data; Entity Type/property schemas are global vault configuration. Workspaces scope creation and Inbox, and define custom relation types. Brainstorm adds one curated spatial board per Workspace, as a view of the same Markdown entities and relations.
 
@@ -51,7 +51,7 @@ Capture uses the active Workspace. The existing Idea folder remains configurable
 | Idea folder       | `Brainstorm/Ideas` | Vault-relative destination for new ideas; created recursively when necessary |
 | Active workspace | `default` | Last selected Workspace, restored through plugin configuration |
 
-Use **Save** after editing settings. Invalid or absolute folder paths are rejected. Changing settings does not move existing notes. The Inbox displays inbox Ideas in the active Workspace, wherever their notes live. Its query is not limited to the capture folder; switching Workspace does not change entity membership or close open Focus/Markdown tabs.
+Use **Save** after editing settings. Invalid or absolute folder paths are rejected. Changing settings does not move existing notes. The Inbox displays inbox Ideas and non-archived entities of other types in the active Workspace, wherever their notes live. Its query is not limited to the capture folder; switching Workspace does not change entity membership or close open Focus/Markdown tabs.
 
 Settings use Obsidian's `loadData` / `saveData` APIs. `data.json` contains capture settings, `configVersion: 6`, `entityTypes`, `workspaces`, `activeWorkspaceId` and optional `boards` visual state. These are definitions, UI context and board-only visual state: entity identity, values, relations and content remain in Markdown. M0–M5 configuration migrates without rewriting notes; missing built-ins are seeded once with no opinionated properties. Unknown configuration fields and unreadable individual type definitions are retained. A malformed type-list root or a newer configuration version blocks loading rather than overwriting configuration.
 
@@ -67,7 +67,7 @@ The existing `entitiesFolder` setting remains the **Idea folder**. Other entity 
 | Location  | `Brainstorm/Locations`  | `exploring`    |
 | Project   | `Brainstorm/Projects`   | `exploring`    |
 
-If the Idea folder is `Custom/Captures`, Characters are created in `Custom/Characters`, and so on. If it is a single root folder such as `Ideas`, the other folders are also at the vault root. No existing notes are moved. Type Manager folder edits affect only future creations. Editing Idea’s folder name also updates the existing capture destination; its parent can be changed in capture settings. Custom types use the same folder resolver, with safe nested relative paths allowed. All valid entities are indexed wherever their files live. Inbox continues to list **only Ideas with status `inbox`**; related entities are available through Focus links and relation search. Workspace membership never changes their physical folder.
+If the Idea folder is `Custom/Captures`, Characters are created in `Custom/Characters`, and so on. If it is a single root folder such as `Ideas`, the other folders are also at the vault root. No existing notes are moved. Type Manager folder edits affect only future creations. Editing Idea’s folder name also updates the existing capture destination; its parent can be changed in capture settings. Custom types use the same folder resolver, with safe nested relative paths allowed. All valid entities are indexed wherever their files live. Inbox retains Ideas with status `inbox` and also exposes non-archived other types. Focus links and relation search remain available. Workspace membership never changes their physical folder.
 
 `exploring` is a compatible generic default for non-Idea entities, not a specialized Character, Scene or Project workflow.
 
@@ -138,7 +138,7 @@ Choose **Brainstorm** beside Inbox, or run **Thought Craft: Open brainstorm**. T
 
 - **+ Idea** reuses Quick Capture and creates a real Markdown Idea in the board’s Workspace, then places its UUID near the current viewport centre. Idea must be enabled there.
 - **+ Add existing** searches titles/types in that Workspace, excluding entities already placed. It changes layout only.
-- Drag cards freely, or select a focused card with Space and use arrow keys. Positions save on release/settled keyboard movement, not during pointer motion. Pan by dragging empty canvas; scroll/pinch to zoom. **Fit**, zoom buttons and last viewport work per Workspace.
+- Drag cards freely, or select a focused card with Space and use arrow keys. Positions save on release/settled keyboard movement, not during pointer motion. Drag empty canvas to rectangle-select; use Space-drag or middle-drag to pan; scroll/pinch to zoom. **Fit**, zoom buttons and last viewport work per Workspace.
 - Double-click a card, press Enter on its focused wrapper, or choose **Open** to use the existing Focus View. For other enabled types, use Focus → Create From, then **Add to Brainstorm**; there is no row of per-type creation buttons.
 - Focus offers **Add to Brainstorm** / **Open in Brainstorm** for its entity’s actual Workspace. That explicit action switches to the relevant Workspace when necessary.
 - **Remove from board** removes visual membership only. The note, properties and relations remain intact. Delete/Backspace shortcuts do not remove entities or placements.
@@ -166,18 +166,28 @@ The canvas uses **`@xyflow/react` 12.12.0**, bundled locally. Its documented [dr
 
 ## Contextual brainstorming and visual groups
 
-Focus offers **Brainstorm around**, alongside its existing Add/Open in Brainstorm action. This opens the entity’s actual Workspace board, places it only if absent, preserves its position and centers the viewport. The compact context indicator names the root; its incoming/outgoing neighbors already on the board stay prominent and unrelated cards become quieter. Nothing is automatically flooded onto the board. Board cards expose the same action through their selection toolbar. **Exit context** or Escape inside the board leaves membership, positions, relations and groups unchanged. A modal receives Escape first. Context clears on Workspace switching/restart and is never persisted.
+Focus offers **Brainstorm around**, alongside its existing Add/Open in Brainstorm action. This opens the entity’s actual Workspace board, places it only if absent, preserves its position and centers the viewport. The compact Focus indicator names the roots; only roots and their direct incoming/outgoing neighbors already on the board are rendered. Unrelated placements remain intact in saved layout. Nothing is automatically flooded onto the board. Board cards expose the same action through their selection toolbar. **Show all** or Escape inside the board leaves membership, positions, relations and groups unchanged. A modal receives Escape first. Focus clears on Workspace switching/restart and is never persisted. Use + Add focus to select additional placed roots; remove each chip independently. Visible nodes are the one-hop union, never a recursive expansion. Groups render only when a member is visible. With several roots, the Connected idea dialog lets you choose its target while retaining your draft.
 
-In context, **+ Connected idea** replaces the normal Idea action. The dialog explicitly shows **New idea → chosen relationship → root**, defaulting to Related to. Valid choices come from the existing relation registry, including compatible Workspace kinds. Creation writes a real Idea with one source-owned relation through the existing repository; the root note is unchanged. The new card appears in a nearby free slot and inherits the root’s current group. If the note saves but placement fails, the dialog gives its path and disables repeat creation; recover through Add existing.
+In Focus, **+ Connected idea** replaces the normal Idea action. The dialog explicitly shows **New idea → chosen relationship → root**, defaulting to Related to. Valid choices come from the existing relation registry, including compatible Workspace kinds. Creation writes a real Idea with one source-owned relation through the existing repository; the root note is unchanged. The new card appears in a nearby free slot and inherits the root’s current group. If the note saves but placement fails, the dialog gives its path and disables repeat creation; recover through Add existing.
 
-Ctrl/Cmd-click cards, or Shift-drag a selection, then choose **Group selection** and name it. At least two distinct **ungrouped** cards are required; existing memberships must be removed first. Groups have stable board-only IDs, labels, absolute bounds and UUID member lists; they are not entities and cannot have relations or Focus views.
+Ctrl/Cmd-click cards, or drag a selection rectangle on empty canvas, then choose **Group selection** and name it. At least two distinct **ungrouped** cards are required; existing memberships must be removed first. Groups have stable board-only IDs, labels, absolute bounds and UUID member lists; they are not entities and cannot have relations or Focus views.
 
 - Drag a group’s title, or focus its wrapper and use arrow keys, to move its boundary and members together. One configuration update saves the settled movement.
-- Select a card and choose **Move to group…** or **Remove from group**. Transfer is explicit, with at most one group per card. Joining expands bounds without moving existing cards. Dragging a member’s center clearly outside its zone removes membership; overlap alone never assigns a new group.
+- Select a card and choose **Move to group…** or **Remove from group**. Transfer is explicit, with at most one group per card. Joining expands bounds without moving existing cards. Dragging one member’s center clearly outside its zone removes membership; moving multiple selected cards together preserves membership; overlap alone never assigns a new group.
 - Select a group to **Rename group**, **Fit group to members** or **Remove group**. Removing the boundary keeps all members on the board at their current absolute positions, with every note/relation intact. Empty groups remain valid.
-- Remove from board and external deletion also clean member lists, preserving the group and its other cards. Removing a root’s group leaves contextual mode active.
+- Remove from board and external deletion also clean member lists, preserving the group and its other cards. Removing a root’s group leaves Focus mode active.
 
 M5 board configuration migrates to version 6 with the exact same nodes/viewport and `groups: []`. Groups are isolated per Workspace and remain independent of React Flow metadata. Freeform boundary resizing, nested groups, arbitrary colors and a dedicated Parking Lot remain deferred. Related-entity discovery is also deferred; Add existing remains explicit and scoped.
+
+## Inbox search, selection and recovery
+
+Search titles or type labels within the active Workspace. Filters cover Entity type, On/Not on Brainstorm, Has/No relations (either direction, including outgoing dangling links), and updates in the last seven days. Sort by newest/oldest created, recently updated, A–Z or Z–A. Search, filters and sorting are temporary. No body indexing, AI search, saved queries or arbitrary property filters are introduced.
+
+Select checkboxes, Ctrl/Cmd-click rows, or Shift-click a row to add a displayed range. Hidden selections are cleared when results or Workspace change, and every batch action intersects selection with currently visible rows. The compact batch bar stays visible during scrolling. **Add to Brainstorm** adds only selected UUIDs, skips existing placements, creates nearby clear slots and performs one layout save without changing Markdown or relationships. The board’s Add Existing dialog also supports multiple native-checkbox selections; changing search clears hidden picker selections. There is no UUID text in normal pickers.
+
+The row’s **⋯** menu offers Open, Add to Brainstorm and Move to trash. Single/batch trash always opens an explicit confirmation naming the notes. Thoughtcraft uses Obsidian’s **vault-local `.trash`**, guaranteeing recoverable files independently of any permanent-delete preference. Recover by moving the file from `.trash` back into the vault; add it to the board explicitly afterward. Board/group membership cleans safely; source notes retain incoming-to-deleted-target relations as unavailable links. Partial failures name the failed files; a separate layout-cleanup failure does not conceal successful trash operations. There is no cascade deletion or irreversible-delete action. Generic Archive is deferred rather than inventing per-type lifecycle semantics.
+
+**Inbox / Brainstorm** are compact accessible tabs with arrow/Home/End navigation and visible focus. They retain the active Workspace and native view state. **Guide** in Inbox, **Thought Craft: Open Thoughtcraft Guide**, and **What do these relations mean?** in relation/connected-idea dialogs open short in-product documentation. Relation help explains all five universal meanings, direction and examples, then returns to the intact picker draft.
 
 ## Workspaces
 
@@ -289,6 +299,10 @@ src/
     board-groups.ts                          Pure group operations and member translation
     board-group-config.ts                    Strict group parsing and M5 layout upgrade
     contextual-brainstorm.ts                  Root navigation, neighbors and connected creation
+    board-focus.ts                           One-hop multi-root visibility projection
+    inbox-query.ts                           Workspace-local search, filters and sorting
+    entity-selection.ts                      Visible-safe UUID selection and ranges
+    entity-batch.ts                          Atomic board add and explicit partial trash results
     entity-type-registry.ts                  Global schema lookup, mutations and subscriptions
     entity-schema-values.ts                  Explicit schema value write intentions
     workspace-registry.ts                    Workspace configuration and active context
@@ -323,6 +337,8 @@ src/
     workspaces/workspace-manager-modal.tsx    Workspace types and relation configuration
     workspaces/workspace-switcher.tsx         Compact active Workspace selection
     brainstorm/                              ItemView, canvas adapter, cards/edges, toolbar and dialogs
+    guide/                                   Short topics, relation meanings and native Guide
+    shared/workspace-tabs.tsx                 Compact accessible native-view navigation
   styles.css                                 Authored stylesheet; root styles.css is generated
 ```
 
@@ -330,7 +346,7 @@ src/
 
 - **Markdown is authoritative.** There is no database, entity JSON file or bulk note migration. Reusable definitions and board-only visual state are versioned in plugin configuration. Disabling/uninstalling the plugin leaves readable notes.
 - **Frontmatter uses the host API.** New files begin with an empty frontmatter envelope. `FileManager.processFrontMatter()` adds the metadata, preserving the Markdown body, including user input that itself contains `---` and YAML-looking text. If this API fails, the original text remains in the created file and the capture modal reports its recovery path.
-- **The index is a projection.** It remains a simple UUID-keyed map. Entities include parsed local properties, relations and their issues, plus raw schema values. Schema lookup and notifications belong to the injected registry; EntityIndex remains unchanged through M6; Workspace filtering scans the existing Inbox projection. Outgoing queries resolve UUID targets; incoming queries scan current entities. Changes notify Inbox and Focus; the initial scan also announces readiness so a restored Focus tab can distinguish loading from a missing entity.
+- **The index is a projection.** It remains a simple UUID-keyed map. Entities include parsed local properties, relations and their issues, plus raw schema values. Schema lookup and notifications belong to the injected registry; EntityIndex remains unchanged through M6.5; Workspace filtering scans the existing index, retaining the original Idea Inbox lifecycle. Outgoing queries resolve UUID targets; incoming queries scan current entities. Changes notify Inbox and Focus; the initial scan also announces readiness so a restored Focus tab can distinguish loading from a missing entity.
 - **Initialization waits for layout-ready.** Event handlers are attached after layout initialization, then Markdown notes are read in small asynchronous batches. This avoids treating initialization `create` events as new captures.
 - **External changes use Vault events.** Create/modify read the current file via the Vault API and parse frontmatter using Obsidian's parser. Delete removes the path; rename updates paths and titles without generating new IDs. Folder operations use path boundaries so `Ideas` never matches `Ideas2`.
 - **Stale reads cannot resurrect renamed/deleted files.** Per-path revisions plus current-file checks reject obsolete asynchronous read results. All Vault listeners use `registerEvent`; repository and React cleanup are registered with the plugin lifecycle.
@@ -351,13 +367,14 @@ npm run test:obsidian:m3
 npm run test:obsidian:m4
 npm run test:obsidian:m5
 npm run test:obsidian:m6
+npm run test:obsidian:m6-5
 ```
 
-These opt-in Linux checks open a **real Obsidian process**, using isolated application profiles and disposable vaults under `.artifacts/`. They enable only the locally built plugin. M0 covers capture and synchronization; M1 covers Focus and custom properties; M2 covers relations, Create From, generic types, malformed external entries, dangling targets and restarts. M3 covers type/schema configuration, all five value kinds, virtual defaults, legacy values, retirement, custom folders, unknown types and configuration loss/restoration. M4 covers Workspace migration/switching, creation restrictions, custom relations, cross-Workspace policies, compatibility feedback and retirement. M5 covers curated board membership, real creation, drag/keyboard placement, viewport/restarts, visual relations, Workspace isolation, external synchronization and styling. M6 covers contextual centering/neighbors, connected creation, visual groups, group movement/persistence, join/leave/removal, cleanup, theme/narrow/reduced-motion behavior and M5 migration. They do not use your normal Obsidian profile or vaults. Each closes its own test process after the run. A Linux desktop session is required.
+These opt-in Linux checks open a **real Obsidian process**, using isolated application profiles and disposable vaults under `.artifacts/`. They enable only the locally built plugin. M0 covers capture and synchronization; M1 covers Focus and custom properties; M2 covers relations, Create From, generic types, malformed external entries, dangling targets and restarts. M3 covers type/schema configuration, all five value kinds, virtual defaults, legacy values, retirement, custom folders, unknown types and configuration loss/restoration. M4 covers Workspace migration/switching, creation restrictions, custom relations, cross-Workspace policies, compatibility feedback and retirement. M5 covers curated board membership, real creation, drag/keyboard placement, viewport/restarts, visual relations, Workspace isolation, external synchronization and styling. M6 covers contextual centering/neighbors, connected creation, visual groups, group movement/persistence, join/leave/removal, cleanup, theme/narrow/reduced-motion behavior and M5 migration. They do not use your normal Obsidian profile or vaults. Each closes its own test process after the run. M6.5 adds a 35-entity search/filter/batch/trash journey, multi-select picker, rectangle drag, multi-root Focus, tabs and Guide checks. A Linux desktop session is required.
 
-Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md), [M3 validation](docs/m3-validation.md), [M4 validation](docs/m4-validation.md), [M5 validation](docs/m5-validation.md) and [M6 validation](docs/m6-validation.md) for results and manual checklists.
+Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md), [M3 validation](docs/m3-validation.md), [M4 validation](docs/m4-validation.md), [M5 validation](docs/m5-validation.md), [M6 validation](docs/m6-validation.md) and [M6.5 validation](docs/m6-5-validation.md) for results and manual checklists.
 
-## M6 limitations and later milestones
+## M6.5 limitations and later milestones
 
 Brainstorm supports one board per Workspace, free placement and basic pan/zoom. There are no named boards, nested groups, auto-layout, dedicated Parking Lot, drawing tools or full in-card editors. Group boundary resizing is deferred; use Fit group to members after changes. Card bodies/properties are intentionally omitted. Parallel labels are offset, but paths/labels are not routed around other cards; arrange cards manually. Layout persistence and Markdown persistence are separate: if placement fails after creating a note, the dialog reports its recovery path for Add existing rather than silently losing the note.
 

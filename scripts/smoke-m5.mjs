@@ -338,12 +338,10 @@ async function addExisting(entity) {
   await page.keyboard.press('Enter');
   const dialog = page.locator('.tc-board-add-modal');
   await dialog.getByLabel('Search entities').fill(entity.title);
-  const select = dialog.getByLabel('Entity', { exact: true });
-  assert.equal(await select.locator(`option[value="${entity.id}"]`).count(), 1);
-  await select.focus();
-  await select.press('End');
-  await select.press('Tab');
-  await page.keyboard.press('Tab');
+  const checkbox = dialog.getByRole('checkbox', { name: `Select ${entity.title}`, exact: true });
+  await checkbox.focus();
+  await page.keyboard.press('Space');
+  await dialog.getByRole('button', { name: 'Add 1', exact: true }).focus();
   await page.keyboard.press('Enter');
   await dialog.waitFor({ state: 'detached' });
   await nodeFor(entity.id).waitFor();
@@ -510,10 +508,12 @@ try {
     () => window.app.plugins.plugins['thought-craft'].boards.getBoard('default').viewport.zoom > 1,
   );
   const pane = await activeBoard().locator('.react-flow__pane').boundingBox();
+  await page.keyboard.down('Space');
   await page.mouse.move(pane.x + 40, pane.y + 40);
   await page.mouse.down();
   await page.mouse.move(pane.x + 120, pane.y + 95, { steps: 10 });
   await page.mouse.up();
+  await page.keyboard.up('Space');
   await delay(250);
   const panned = (await savedBoard()).viewport;
   await restartObsidian();
@@ -545,7 +545,10 @@ try {
   assert.equal(await readFile(join(vault, oldIdea.filePath), 'utf8'), oldBytes);
   await addExisting(oldIdea);
   await activeBoard().getByRole('button', { name: '+ Add existing', exact: true }).click();
-  assert.equal(await page.locator('.tc-board-add-modal option[value="' + oldId + '"]').count(), 0);
+  assert.equal(
+    await page.locator('.tc-board-add-modal input[data-entity-id="' + oldId + '"]').count(),
+    0,
+  );
   await page.keyboard.press('Escape');
   checks.push(
     'Keyboard Add existing searches only unplaced Workspace entities and does not rewrite them. Enter opens Focus/native Markdown; Open in Brainstorm returns. Remove from board preserves the real note and allows re-adding; duplicates are excluded.',

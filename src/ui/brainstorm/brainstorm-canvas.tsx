@@ -26,7 +26,7 @@ import { useBoardNodes } from './use-board-nodes';
 import { useBrainstormContext, BrainstormContext, type ContextRequest } from './brainstorm-context';
 import { groupForEntity } from '../../domain/board-group';
 import { RelationEdge } from './relation-edge';
-import { relationEdges } from './flow-adapter';
+import { relationEdges, selectionIsVisible } from './flow-adapter';
 import { BrainstormToolbar, type BoardSelection } from './brainstorm-toolbar';
 
 const nodeTypes = { entity: EntityNode, boardGroup: BoardGroupNode };
@@ -58,18 +58,26 @@ export function BrainstormCanvas({
   const flow = useReactFlow<BoardFlowNode, Edge>();
   const canvasEl = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState<Edge[]>([]);
-  const [selection, setSelection] = useState<BoardSelection | null>(null);
+  const [storedSelection, setSelection] = useState<BoardSelection | null>(null);
   const [viewport, setViewport] = useState<Viewport>(state.viewport);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const context = useBrainstormContext(state, services, version, contextRequest, contextHandled);
+  const visibleSelectedIds = selectedIds.filter(
+    (id) => !context.visibility || context.visibility.has(id),
+  );
+  const selection = selectionIsVisible(storedSelection, context.visibility, state.groups, edges)
+    ? storedSelection
+    : null;
+
   const { nodes, changeNodes } = useBoardNodes(
     state,
     version,
     services,
     commands.openFocus,
-    context.rootId,
+    context.rootIds,
+    context.visibility,
     report,
   );
   const canCreate = services.workspaces
@@ -81,14 +89,24 @@ export function BrainstormCanvas({
     setEdges((previous) =>
       relationEdges(projection.relationships, services).map((edge) => ({
         ...edge,
-        selected: previous.find((candidate) => candidate.id === edge.id)?.selected ?? false,
+        hidden: Boolean(
+          context.visibility &&
+          (!context.visibility.has(edge.source) || !context.visibility.has(edge.target)),
+        ),
+        selected:
+          context.visibility &&
+          (!context.visibility.has(edge.source) || !context.visibility.has(edge.target))
+            ? false
+            : (previous.find((candidate) => candidate.id === edge.id)?.selected ?? false),
       })),
     );
-  }, [state, version, services, commands.openFocus]);
+  }, [state, version, services, commands.openFocus, context.visibility]);
 
   const select = useCallback(({ nodes, edges }: { nodes: BoardFlowNode[]; edges: Edge[] }) => {
     setSelectedIds((current) => {
-      const next = nodes.filter((node) => node.type === 'entity').map((node) => node.id);
+      const next = nodes
+        .filter((node) => node.type === 'entity' && !node.hidden)
+        .map((node) => node.id);
       return current.join(',') === next.join(',') ? current : next;
     });
     const node = nodes.length === 1 ? nodes[0] : undefined;
@@ -182,8 +200,12 @@ export function BrainstormCanvas({
     <div className="tc-board-body" onKeyDownCapture={openFocusedEntity}>
       {context.root && (
         <BrainstormContext
-          title={context.root.title}
-          typeLabel={services.types.label(context.root.type)}
+          roots={context.rootIds.flatMap((id) => {
+            const entity = services.index.getById(id);
+            return entity ? [entity] : [];
+          })}
+          remove={context.removeRoot}
+          add={() => commands.addFocus(state.workspaceId, context.rootIds, context.addRoots)}
           exit={context.exitContext}
         />
       )}
@@ -192,17 +214,22 @@ export function BrainstormCanvas({
           state.groups.find((group) => group.id === selection?.id)?.entityIds.length,
         )}
         contextActive={Boolean(context.root)}
-        selectedCount={selectedIds.length}
-        canGroup={selectedIds.length >= 2 && selectedIds.every((id) => !groupForEntity(state, id))}
+        selectedCount={visibleSelectedIds.length}
+        canGroup={
+          visibleSelectedIds.length >= 2 &&
+          visibleSelectedIds.every((id) => !groupForEntity(state, id))
+        }
         hasGroups={state.groups.length > 0}
-        hasMembership={selectedIds.some((id) => groupForEntity(state, id))}
+        hasMembership={visibleSelectedIds.some((id) => groupForEntity(state, id))}
         brainstormAround={() => {
           if (selection?.kind === 'node') context.enterContext(selection.id);
         }}
-        groupSelection={() => commands.createGroup(state.workspaceId, selectedIds)}
-        moveToGroup={() => commands.moveToGroup(state.workspaceId, selectedIds)}
+        groupSelection={() => commands.createGroup(state.workspaceId, visibleSelectedIds)}
+        moveToGroup={() => commands.moveToGroup(state.workspaceId, visibleSelectedIds)}
         removeFromGroup={() => {
-          void services.boards.assignGroup(state.workspaceId, selectedIds, null).catch(report);
+          void services.boards
+            .assignGroup(state.workspaceId, visibleSelectedIds, null)
+            .catch(report);
         }}
         renameGroup={() => {
           if (selection?.kind === 'group') commands.renameGroup(state.workspaceId, selection.id);
@@ -217,7 +244,7 @@ export function BrainstormCanvas({
         zoom={viewport.zoom}
         create={() =>
           context.root
-            ? commands.createConnected(context.root.id)
+            ? commands.createConnected(context.root.id, context.rootIds)
             : commands.createIdea(state.workspaceId, placementAtCenter())
         }
         addExisting={() => commands.addExisting(state.workspaceId, placementAtCenter())}
@@ -287,7 +314,10 @@ export function BrainstormCanvas({
             ).length > 0
           }
           deleteKeyCode={null}
-          multiSelectionKeyCode={['Meta', 'Control']}
+          multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
+          selectionOnDrag={true}
+          panOnDrag={[1, 2]}
+          panActivationKeyCode="Space"
           selectionKeyCode="Shift"
           edgesReconnectable={false}
           zoomOnDoubleClick={false}
@@ -319,8 +349,8 @@ export function BrainstormCanvas({
         )}
       </div>
       <p className="tc-board-hint">
-        Drag cards to arrange · Drag the canvas to pan · Scroll to zoom · Ctrl/Cmd-click or
-        Shift-drag to select cards · Connect using handles or Connect…
+        Drag cards to arrange · Drag empty canvas to select · Space-drag or middle-drag to pan ·
+        Scroll to zoom · Ctrl/Cmd-click to select cards · Connect using handles or Connect…
       </p>
     </div>
   );

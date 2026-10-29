@@ -1,3 +1,4 @@
+import { WorkspaceTabs } from '../shared/workspace-tabs';
 import { useRef } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { WorkspaceSwitcher } from '../workspaces/workspace-switcher';
@@ -21,13 +22,19 @@ export function BrainstormApp({
   const workspace = services.workspaces.getActive();
   const board = services.boards.getBoard(workspace.id);
   return (
-    <div className="tc-brainstorm">
+    <div
+      className="tc-brainstorm"
+      id="tc-brainstorm-panel"
+      role="tabpanel"
+      aria-labelledby="tc-brainstorm-brainstorm-tab"
+    >
       <header className="tc-board-header">
         <WorkspaceSwitcher workspaces={services.workspaces} manage={commands.manageWorkspaces} />
-        <nav className="tc-view-switcher" aria-label="Thoughtcraft views">
-          <button onClick={commands.showInbox}>Inbox</button>
-          <button aria-current="page">Brainstorm</button>
-        </nav>
+        <WorkspaceTabs
+          active="Brainstorm"
+          inbox={commands.showInbox}
+          brainstorm={() => undefined}
+        />
         <h1 className="tc-visually-hidden">Brainstorm · {workspace.label}</h1>
       </header>
       <ReactFlowProvider key={workspace.id}>

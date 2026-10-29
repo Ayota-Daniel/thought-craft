@@ -1,3 +1,5 @@
+import type { BoardGroup } from '../../domain/board-group';
+import type { BoardSelection } from './brainstorm-toolbar';
 import { MarkerType, type Edge } from '@xyflow/react';
 import { ENTITY_TYPES } from '../../domain/entity-type';
 import type { BoardEntity, BoardRelationship } from '../../application/board-projection';
@@ -57,4 +59,23 @@ export function relationEdges(
       labelBgBorderRadius: 3,
     };
   });
+}
+
+/** Selection controls must never operate on a card or edge hidden by Focus. */
+export function selectionIsVisible(
+  selection: BoardSelection | null,
+  visible: ReadonlySet<string> | null,
+  groups: readonly BoardGroup[],
+  edges: readonly Edge[],
+): boolean {
+  if (!selection) return false;
+  if (!visible) return true;
+  if (selection.kind === 'node') return visible.has(selection.id);
+  if (selection.kind === 'group') {
+    return Boolean(
+      groups.find((group) => group.id === selection.id)?.entityIds.some((id) => visible.has(id)),
+    );
+  }
+  const edge = edges.find((edge) => edge.id === selection.id);
+  return Boolean(edge && visible.has(edge.source) && visible.has(edge.target));
 }

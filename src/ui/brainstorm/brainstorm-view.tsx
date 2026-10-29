@@ -41,9 +41,20 @@ export class BrainstormView extends ItemView {
             this.clearDialog(),
           ),
         ),
-      createConnected: (rootId) =>
+      createConnected: (rootId, roots) =>
         this.showDialog(
-          new ContextualCreateDialog(this.app, rootId, services, () => this.clearDialog()),
+          new ContextualCreateDialog(this.app, rootId, services, () => this.clearDialog(), roots),
+        ),
+      addFocus: (workspaceId, excluded, addRoots) =>
+        this.showDialog(
+          new AddEntityDialog(
+            this.app,
+            workspaceId,
+            { x: 0, y: 0 },
+            services,
+            () => this.clearDialog(),
+            { excluded, addRoots },
+          ),
         ),
       createGroup: (workspaceId, ids) =>
         this.showDialog(

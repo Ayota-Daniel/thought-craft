@@ -1,3 +1,4 @@
+import { ThoughtcraftGuide } from './ui/guide/guide-modal';
 import { prepareBrainstormContext } from './application/contextual-brainstorm';
 import { WorkspaceBoardStore } from './application/workspace-board-store';
 import { nextBoardPosition } from './domain/board';
@@ -120,6 +121,8 @@ export default class ThoughtCraftPlugin extends Plugin {
         (id) => {
           void this.openEntityFocus(id);
         },
+        this.boards,
+        this.repository,
       );
       this.register(() => view.dispose());
       return view;
@@ -187,6 +190,11 @@ export default class ThoughtCraftPlugin extends Plugin {
       );
       this.register(() => view.disposeBoard());
       return view;
+    });
+    this.addCommand({
+      id: 'open-guide',
+      name: 'Open Thoughtcraft Guide',
+      callback: () => new ThoughtcraftGuide(this.app).open(),
     });
     this.addCommand({
       id: 'open-brainstorm',

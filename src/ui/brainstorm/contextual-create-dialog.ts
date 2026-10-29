@@ -1,3 +1,4 @@
+import { addRelationHelp } from '../guide/guide-modal';
 import { Modal, type App } from 'obsidian';
 import {
   connectedIdeaRelations,
@@ -10,12 +11,15 @@ export class ContextualCreateDialog extends Modal {
   private unsubscribers: (() => void)[] = [];
   private pending = false;
   private saved = false;
+  private draftContent = '';
+  private draftRelation = 'related-to';
 
   constructor(
     app: App,
     private rootId: string,
     private services: BoardServices,
     private closed: () => void,
+    private roots?: readonly string[],
   ) {
     super(app);
   }
@@ -25,10 +29,32 @@ export class ContextualCreateDialog extends Modal {
     this.titleEl.setText(`New idea around ${root?.title ?? 'entity'}`);
     this.modalEl.addClass('tc-connected-idea-modal');
     const form = this.contentEl.createEl('form', { cls: 'tc-property-form' });
+    addRelationHelp(form, this.app);
+    if (this.roots && this.roots.length > 1) {
+      const rootLabel = form.createEl('label', { text: 'Connect new idea to' });
+      const rootSelect = rootLabel.createEl('select', {
+        attr: { 'aria-label': 'Connect new idea to' },
+      });
+      for (const id of this.roots) {
+        const entity = this.services.index.getById(id);
+        if (entity) rootSelect.createEl('option', { text: entity.title, value: id });
+      }
+      rootSelect.value = this.rootId;
+      rootSelect.addEventListener('change', () => {
+        this.draftContent = input.value;
+        this.draftRelation = select.value;
+        this.rootId = rootSelect.value;
+        this.contentEl.empty();
+        this.unsubscribers.forEach((unsubscribe) => unsubscribe());
+        this.onOpen();
+      });
+    }
+
     const contentLabel = form.createEl('label', { text: 'Your idea' });
     const input = contentLabel.createEl('textarea', {
       attr: { rows: '4', required: '', 'aria-label': 'Your idea' },
     });
+    input.value = this.draftContent;
     const relationLabel = form.createEl('label', { text: 'Connect as' });
     const select = relationLabel.createEl('select', { attr: { 'aria-label': 'Connect as' } });
     form.createEl('p', {
@@ -37,14 +63,14 @@ export class ContextualCreateDialog extends Modal {
     });
     const error = form.createDiv({ cls: 'tc-error', attr: { role: 'alert' } });
     const footer = form.createDiv({ cls: 'tc-property-form-footer' });
-    const cancel = footer.createEl('button', { text: 'Cancel', type: 'button' });
+    const cancel = footer.createEl('button', { text: 'Cancel', attr: { type: 'button' } });
     const submit = footer.createEl('button', {
       text: 'Create connected idea',
-      type: 'submit',
+      attr: { type: 'submit' },
       cls: 'mod-cta',
     });
     const refresh = () => {
-      const previous = select.value || 'related-to';
+      const previous = select.value || this.draftRelation;
       const options = connectedIdeaRelations(this.rootId, this.services);
       select.empty();
       for (const option of options) {

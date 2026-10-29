@@ -10,6 +10,7 @@ import {
 import type { BoardGroup } from '../domain/board-group';
 import { cardIsOutside, groupBounds, validateGroup } from '../domain/board-group';
 import {
+  nextBoardPosition,
   validateBoardPosition,
   validateBoardViewport,
   type BoardPosition,
@@ -153,6 +154,51 @@ export class WorkspaceBoardStore {
       validateBoardPosition(position);
       const next = { ...board, nodes: { ...board.nodes, [entityId]: position } };
       return groupId ? assignGroup(next, [entityId], groupId) : next;
+    });
+  }
+
+  /** One atomic configuration write; duplicate membership is skipped and no note is edited. */
+  addEntities(
+    workspaceId: string,
+    entityIds: readonly string[],
+    preferred?: BoardPosition,
+  ): Promise<void> {
+    return this.update(workspaceId, (board) => {
+      let next = board;
+      const position = preferred ?? {
+        x: (200 - board.viewport.x) / board.viewport.zoom,
+        y: (120 - board.viewport.y) / board.viewport.zoom,
+      };
+      for (const id of new Set(entityIds)) {
+        const entity = this.index.getById(id);
+        if (!entity || entity.workspaceId !== workspaceId)
+          throw new Error('Choose entities still in this Workspace.');
+        if (next.nodes[id]) continue;
+        const point = nextBoardPosition(next, position);
+        validateBoardPosition(point);
+        next = { ...next, nodes: { ...next.nodes, [id]: point } };
+      }
+      return next;
+    });
+  }
+
+  /** Settle a complete selection in one write. Multi-card motion preserves memberships. */
+  moveSelection(
+    workspaceId: string,
+    positions: Readonly<Record<string, BoardPosition>>,
+    groupPositions: Readonly<Record<string, BoardPosition>> = {},
+  ): Promise<void> {
+    return this.update(workspaceId, (board) => {
+      let next = board;
+      for (const [id, position] of Object.entries(groupPositions))
+        next = moveGroup(next, id, position);
+      const nodes = { ...next.nodes };
+      for (const [id, position] of Object.entries(positions)) {
+        if (!nodes[id]) throw new Error('A selected entity is no longer on the board.');
+        validateBoardPosition(position);
+        nodes[id] = position;
+      }
+      return { ...next, nodes };
     });
   }
 

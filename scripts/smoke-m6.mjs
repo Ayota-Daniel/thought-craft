@@ -358,18 +358,10 @@ try {
   await page.screenshot({ path: join(run, 'focus-actions.png') });
   await around(rootId);
   assert.equal(await node(rootId).evaluate((el) => el.classList.contains('tc-context-root')), true);
-  assert.equal(
-    await node(outgoingId).evaluate((el) => el.classList.contains('tc-context-quiet')),
-    false,
-  );
-  assert.equal(
-    await node(incomingId).evaluate((el) => el.classList.contains('tc-context-quiet')),
-    false,
-  );
-  assert.equal(
-    await node(quietId).evaluate((el) => el.classList.contains('tc-context-quiet')),
-    true,
-  );
+  await node(outgoingId).waitFor();
+  await node(incomingId).waitFor();
+  assert.equal(await node(quietId).count(), 0);
+  assert.ok((await saved()).nodes[quietId]);
   const cardBox = await node(rootId).boundingBox();
   const canvasBox = await board().locator('.tc-board-canvas').boundingBox();
   assert.ok(Math.abs(cardBox.x + cardBox.width / 2 - canvasBox.x - canvasBox.width / 2) < 4);
@@ -377,16 +369,16 @@ try {
   assert.deepEqual((await saved()).nodes[rootId], legacy.nodes[rootId]);
   await page.screenshot({ path: join(run, 'context-dark.png') });
   const beforeExit = await saved();
-  await board().getByRole('button', { name: 'Exit context', exact: true }).focus();
+  await board().getByRole('button', { name: 'Show all', exact: true }).focus();
   await page.keyboard.press('Enter');
   assert.equal(await board().locator('.tc-board-context').count(), 0);
   assert.deepEqual(await saved(), beforeExit);
   await around(offboardId);
   assert.ok((await saved()).nodes[offboardId]);
-  await board().getByRole('button', { name: 'Exit context', exact: true }).click();
+  await board().getByRole('button', { name: 'Show all', exact: true }).click();
   await around(rootId);
   checks.push(
-    'Focus Brainstorm around opens the root Workspace, preserves existing position or explicitly places an absent root, centers measured card geometry and distinguishes incoming/outgoing neighbors from unrelated cards. Exit preserves layout.',
+    'Focus Brainstorm around opens the root Workspace, preserves existing position or explicitly places an absent root, centers measured card geometry and distinguishes incoming/outgoing neighbors from unrelated cards (hidden in M6.5). Exit preserves layout.',
   );
 
   const rootBytes = originals.get(rootId);
@@ -423,8 +415,7 @@ try {
   await board().getByRole('button', { name: 'Brainstorm around', exact: true }).focus();
   await page.keyboard.press('Enter');
   await board()
-    .locator('.tc-board-context strong')
-    .getByText(first.title, { exact: true })
+    .getByRole('button', { name: `Remove focus ${first.title}`, exact: true })
     .waitFor();
   await node(first.id).focus();
   await page.keyboard.press('Escape');
@@ -515,7 +506,7 @@ try {
     'Keyboard group rename, explicit join/leave and group-inherited connected creation pass. Removing a group leaves context active, every card at its absolute position, and exact Markdown/relations unchanged.',
   );
 
-  await board().getByRole('button', { name: 'Exit context', exact: true }).click();
+  await board().getByRole('button', { name: 'Show all', exact: true }).click();
   const nextGroup = await makeGroup([rootId, first.id], 'Consequences');
   await unlink(join(vault, first.filePath));
   await node(first.id).waitFor({ state: 'detached' });

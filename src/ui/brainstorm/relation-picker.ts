@@ -1,3 +1,4 @@
+import { addRelationHelp } from '../guide/guide-modal';
 import { Modal, type App } from 'obsidian';
 import { availableBoardRelations } from '../../application/board-actions';
 import type { BoardServices } from './board-services';
@@ -23,6 +24,7 @@ export class BoardRelationPicker extends Modal {
     );
     this.modalEl.addClass('tc-board-relation-modal');
     const form = this.contentEl.createEl('form', { cls: 'tc-property-form' });
+    addRelationHelp(form, this.app);
     const label = form.createEl('label', { text: 'Relationship' });
     const select = label.createEl('select', { attr: { 'aria-label': 'Relationship' } });
     const hint = form.createEl('p', {
@@ -31,10 +33,10 @@ export class BoardRelationPicker extends Modal {
     });
     const error = form.createDiv({ cls: 'tc-error', attr: { role: 'alert' } });
     const footer = form.createDiv({ cls: 'tc-property-form-footer' });
-    const cancel = footer.createEl('button', { text: 'Cancel', type: 'button' });
+    const cancel = footer.createEl('button', { text: 'Cancel', attr: { type: 'button' } });
     const submit = footer.createEl('button', {
       text: 'Create relationship',
-      type: 'submit',
+      attr: { type: 'submit' },
       cls: 'mod-cta',
     });
     const refresh = () => {

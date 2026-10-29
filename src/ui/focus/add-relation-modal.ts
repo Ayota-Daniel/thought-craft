@@ -1,3 +1,4 @@
+import { addRelationHelp } from '../guide/guide-modal';
 import { Modal, type App } from 'obsidian';
 import type { EntityTypeRegistry } from '../../application/entity-type-registry';
 import type { WorkspaceRegistry } from '../../application/workspace-registry';
@@ -27,6 +28,7 @@ export class AddRelationModal extends Modal {
     this.titleEl.setText('Add relation');
     this.modalEl.addClass('tc-add-relation-modal');
     const form = this.contentEl.createEl('form', { cls: 'tc-property-form' });
+    addRelationHelp(form, this.app);
     const typeLabel = form.createEl('label', { text: 'Relation type' });
     const typeInput = typeLabel.createEl('select', { attr: { 'aria-label': 'Relation type' } });
     const scopeLabel = form.createEl('label', { text: 'Search scope' });
@@ -45,10 +47,10 @@ export class AddRelationModal extends Modal {
     const statusEl = form.createDiv({ cls: 'tc-inspector-hint', attr: { role: 'status' } });
     const errorEl = form.createDiv({ cls: 'tc-error', attr: { role: 'alert' } });
     const footer = form.createDiv({ cls: 'tc-property-form-footer' });
-    const cancelButton = footer.createEl('button', { text: 'Cancel', type: 'button' });
+    const cancelButton = footer.createEl('button', { text: 'Cancel', attr: { type: 'button' } });
     const submitButton = footer.createEl('button', {
       text: 'Add relation',
-      type: 'submit',
+      attr: { type: 'submit' },
       cls: 'mod-cta',
     });
 
@@ -92,7 +94,7 @@ export class AddRelationModal extends Modal {
       for (const entity of targets) {
         targetInput.createEl('option', {
           value: entity.id,
-          text: `${entity.title} — ${this.types.label(entity.type)} · ${this.workspaces.label(entity.workspaceId)} · ${entity.id.slice(0, 8)}`,
+          text: `${entity.title} — ${this.types.label(entity.type)} · ${this.workspaces.label(entity.workspaceId)}`,
         });
       }
       targetInput.value = targets.some((entity) => entity.id === selectedId) ? selectedId : '';

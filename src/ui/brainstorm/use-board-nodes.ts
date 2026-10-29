@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { applyNodeChanges, type NodeChange } from '@xyflow/react';
 import { projectBoard } from '../../application/board-projection';
-import { contextualNeighbors } from '../../application/contextual-brainstorm';
 import type { WorkspaceBoardState } from '../../domain/board';
 import type { BoardServices } from './board-services';
 import { entityNodes } from './flow-adapter';
@@ -12,7 +11,8 @@ export function useBoardNodes(
   version: number,
   services: BoardServices,
   openFocus: (id: string) => void,
-  rootId: string | null,
+  rootIds: readonly string[],
+  visibility: ReadonlySet<string> | null,
   report: (failure: unknown) => void,
 ) {
   const [nodes, setNodes] = useState<BoardFlowNode[]>([]);
@@ -20,21 +20,16 @@ export function useBoardNodes(
 
   useEffect(() => {
     const projection = projectBoard(state, services.index);
-    const neighbors = rootId ? contextualNeighbors(rootId, services.index) : null;
-    function contextualClass(id: string): string | undefined {
-      if (id === rootId) {
-        return 'tc-context-root';
-      }
-      if (neighbors && !neighbors.has(id)) {
-        return 'tc-context-quiet';
-      }
-      return undefined;
-    }
     const entities = entityNodes(projection.entities, services, openFocus).map((node) => ({
       ...node,
-      className: contextualClass(node.id),
+      hidden: Boolean(visibility && !visibility.has(node.id)),
+      className: rootIds.includes(node.id) ? 'tc-context-root' : undefined,
     }));
-    const next: BoardFlowNode[] = [...groupNodes(state), ...entities];
+    const groups = groupNodes(state).map((node) => ({
+      ...node,
+      hidden: Boolean(visibility && !node.data.memberIds.some((id) => visibility.has(id))),
+    }));
+    const next: BoardFlowNode[] = [...groups, ...entities];
     setNodes((previous) =>
       next.map((node) => {
         const existing = previous.find((candidate) => candidate.id === node.id);
@@ -44,48 +39,61 @@ export function useBoardNodes(
         return {
           ...node,
           measured: existing.measured,
-          selected: existing.selected,
+          selected: node.hidden ? false : existing.selected,
           dragging: existing.dragging,
           position:
             existing.dragging || pending.current.has(node.id) ? existing.position : node.position,
         };
       }),
     );
-  }, [state, version, services, openFocus, rootId]);
+  }, [state, version, services, openFocus, rootIds, visibility]);
 
-  function savePosition(change: Extract<NodeChange<BoardFlowNode>, { type: 'position' }>): void {
-    if (!change.position) {
-      return;
+  function savePositions(
+    changes: Extract<NodeChange<BoardFlowNode>, { type: 'position' }>[],
+  ): void {
+    const groupPositions = Object.fromEntries(
+      changes
+        .filter((change) => state.groups.some((group) => group.id === change.id))
+        .map((change) => [change.id, change.position!]),
+    );
+    const positions = Object.fromEntries(
+      changes
+        .filter((change) => !state.groups.some((group) => group.id === change.id))
+        .map((change) => [change.id, change.position!]),
+    );
+    const ids = [
+      ...Object.keys(positions),
+      ...Object.keys(groupPositions),
+      ...state.groups
+        .filter((group) => groupPositions[group.id])
+        .flatMap((group) => group.entityIds),
+    ];
+    [...new Set(ids)].forEach((id) => pending.current.set(id, (pending.current.get(id) ?? 0) + 1));
+    let operation: Promise<void>;
+    if (changes.length === 1 && !Object.keys(groupPositions).length) {
+      const change = changes[0]!;
+      operation = services.boards.moveEntity(state.workspaceId, change.id, change.position!);
+    } else {
+      operation = services.boards.moveSelection(state.workspaceId, positions, groupPositions);
     }
-    const group = state.groups.find((item) => item.id === change.id);
-    const ids = group ? [group.id, ...group.entityIds] : [change.id];
-    ids.forEach((id) => pending.current.set(id, (pending.current.get(id) ?? 0) + 1));
-    const operation = group
-      ? services.boards.moveGroup(state.workspaceId, change.id, change.position)
-      : services.boards.moveEntity(state.workspaceId, change.id, change.position);
     void operation
       .catch((failure: unknown) => {
         report(failure);
         const saved = services.boards.getBoard(state.workspaceId);
         setNodes((current) =>
           current.map((node) => {
-            if (!ids.includes(node.id) || pending.current.get(node.id) !== 1) {
-              return node;
-            }
-            const zone = saved.groups.find((item) => item.id === node.id);
-            const position = zone ? { x: zone.x, y: zone.y } : saved.nodes[node.id];
+            if (!ids.includes(node.id) || pending.current.get(node.id) !== 1) return node;
+            const group = saved.groups.find((item) => item.id === node.id);
+            const position = group ? { x: group.x, y: group.y } : saved.nodes[node.id];
             return position ? { ...node, position } : node;
           }),
         );
       })
       .finally(() => {
-        ids.forEach((id) => {
+        [...new Set(ids)].forEach((id) => {
           const remaining = (pending.current.get(id) ?? 1) - 1;
-          if (remaining > 0) {
-            pending.current.set(id, remaining);
-          } else {
-            pending.current.delete(id);
-          }
+          if (remaining > 0) pending.current.set(id, remaining);
+          else pending.current.delete(id);
         });
       });
   }
@@ -113,11 +121,11 @@ export function useBoardNodes(
       }
       return applyNodeChanges(effective, preview);
     });
-    for (const change of effective) {
-      if (change.type === 'position' && change.dragging === false && change.position) {
-        savePosition(change);
-      }
-    }
+    const settled = effective.filter(
+      (change): change is Extract<NodeChange<BoardFlowNode>, { type: 'position' }> =>
+        change.type === 'position' && change.dragging === false && Boolean(change.position),
+    );
+    if (settled.length) savePositions(settled);
   }
 
   return { nodes, changeNodes };

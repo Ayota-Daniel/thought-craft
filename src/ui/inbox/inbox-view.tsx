@@ -3,11 +3,16 @@ import type { EntityTypeRegistry } from '../../application/entity-type-registry'
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import { createRoot, type Root } from 'react-dom/client';
 import type { EntityIndex } from '../../infrastructure/entity-index';
+import type { WorkspaceBoardStore } from '../../application/workspace-board-store';
+import { addEntitiesToBoard, type EntityTrashWriter } from '../../application/entity-batch';
+import { TrashEntitiesModal } from './trash-entities-modal';
+import { ThoughtcraftGuide } from '../guide/guide-modal';
 import { Inbox } from './inbox';
 
 export const INBOX_VIEW_TYPE = 'thought-craft-inbox';
 export class InboxView extends ItemView {
   private root: Root | null = null;
+  private trashModal: TrashEntitiesModal | null = null;
   constructor(
     leaf: WorkspaceLeaf,
     private index: EntityIndex,
@@ -17,6 +22,8 @@ export class InboxView extends ItemView {
     private capture: () => void,
     private showBrainstorm: () => void,
     private openIdea: (id: string) => void,
+    private boards: WorkspaceBoardStore,
+    private writer: EntityTrashWriter,
   ) {
     super(leaf);
   }
@@ -35,6 +42,24 @@ export class InboxView extends ItemView {
     this.root = createRoot(this.contentEl);
     this.root.render(
       <Inbox
+        boards={this.boards}
+        add={(ids) => addEntitiesToBoard(this.workspaces.getActive().id, ids, this.boards)}
+        trash={(ids) => {
+          if (this.trashModal) return;
+          this.trashModal = new TrashEntitiesModal(
+            this.app,
+            this.workspaces.getActive().id,
+            [...ids],
+            this.index,
+            this.writer,
+            this.boards,
+            () => {
+              this.trashModal = null;
+            },
+          );
+          this.trashModal.open();
+        }}
+        guide={() => new ThoughtcraftGuide(this.app).open()}
         workspaces={this.workspaces}
         types={this.types}
         manageWorkspaces={this.manageWorkspaces}
@@ -49,6 +74,7 @@ export class InboxView extends ItemView {
     this.dispose();
   }
   dispose(): void {
+    this.trashModal?.close();
     this.root?.unmount();
     this.root = null;
   }

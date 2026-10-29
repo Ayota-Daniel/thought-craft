@@ -24,7 +24,12 @@ export interface BoardCommands {
   createIdea: (workspaceId: string, position: BoardPosition) => void;
   addExisting: (workspaceId: string, position: BoardPosition) => void;
   connect: (workspaceId: string, sourceId: string, targetId: string) => void;
-  createConnected: (rootId: string) => void;
+  createConnected: (rootId: string, roots?: readonly string[]) => void;
+  addFocus: (
+    workspaceId: string,
+    excluded: readonly string[],
+    addRoots: (ids: readonly string[]) => void,
+  ) => void;
   createGroup: (workspaceId: string, entityIds: readonly string[]) => void;
   renameGroup: (workspaceId: string, groupId: string) => void;
   moveToGroup: (workspaceId: string, entityIds: readonly string[]) => void;
