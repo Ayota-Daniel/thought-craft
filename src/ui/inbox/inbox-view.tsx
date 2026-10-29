@@ -15,6 +15,7 @@ export class InboxView extends ItemView {
     private types: EntityTypeRegistry,
     private manageWorkspaces: () => void,
     private capture: () => void,
+    private showBrainstorm: () => void,
     private openIdea: (id: string) => void,
   ) {
     super(leaf);
@@ -39,6 +40,7 @@ export class InboxView extends ItemView {
         manageWorkspaces={this.manageWorkspaces}
         index={this.index}
         capture={this.capture}
+        showBrainstorm={this.showBrainstorm}
         open={this.openIdea}
       />,
     );

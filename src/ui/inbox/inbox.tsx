@@ -10,11 +10,20 @@ interface InboxProps {
   manageWorkspaces: () => void;
   index: EntityIndex;
   capture: () => void;
+  showBrainstorm: () => void;
   open: (id: string) => void;
 }
 const formatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
-export function Inbox({ index, capture, open, workspaces, types, manageWorkspaces }: InboxProps) {
+export function Inbox({
+  index,
+  capture,
+  open,
+  workspaces,
+  types,
+  manageWorkspaces,
+  showBrainstorm,
+}: InboxProps) {
   const allInbox = useSyncExternalStore(index.subscribe, index.getInbox);
   const [, refresh] = useState(0);
   useEffect(() => workspaces.subscribe(() => refresh((version) => version + 1)), [workspaces]);
@@ -27,6 +36,10 @@ export function Inbox({ index, capture, open, workspaces, types, manageWorkspace
   return (
     <div className="tc-inbox">
       <WorkspaceSwitcher workspaces={workspaces} manage={manageWorkspaces} />
+      <nav className="tc-view-switcher" aria-label="Thoughtcraft views">
+        <button aria-current="page">Inbox</button>
+        <button onClick={showBrainstorm}>Brainstorm</button>
+      </nav>
       <header className="tc-inbox-header">
         <div>
           <span className="tc-eyebrow">Thought Craft</span>

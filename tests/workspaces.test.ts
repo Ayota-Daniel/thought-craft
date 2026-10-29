@@ -84,7 +84,7 @@ describe('workspace configuration and active context', () => {
     const registry = new WorkspaceRegistry(migrated.workspaces, migrated.activeWorkspaceId, []);
     expect(registry.getActive().id).toBe('default');
     expect(registry.get('novel')).toBeUndefined();
-    expect(() => migrateWorkspaces({ configVersion: 5 }, [])).toThrow('newer');
+    expect(() => migrateWorkspaces({ configVersion: 6 }, [])).toThrow('newer');
   });
 
   it('creates a normalized stable ID, description and default Idea membership', async () => {

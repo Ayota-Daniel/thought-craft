@@ -18,6 +18,7 @@ export class AddRelationModal extends Modal {
     private relationTypes: RelationTypeRegistry,
     private addRelation: (input: NewRelation) => Promise<void>,
     private onClosed: () => void,
+    private targetAllowed: (entityId: string) => boolean = () => true,
   ) {
     super(app);
   }
@@ -65,7 +66,7 @@ export class AddRelationModal extends Modal {
       const targets = this.index
         .getAll()
         .filter((entity) => {
-          if (!source || !definition || source.id === entity.id) {
+          if (!source || !definition || source.id === entity.id || !this.targetAllowed(entity.id)) {
             return false;
           }
           if (scopeInput.value !== 'all' && source.workspaceId !== entity.workspaceId) {

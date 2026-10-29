@@ -1,0 +1,970 @@
+@import '@xyflow/react/dist/base.css';
+
+/* Scoped styles inherit Obsidian's theme, including dark and high-contrast themes. */
+.tc-inbox-container {
+  padding: 0 !important;
+}
+.tc-inbox {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 36px 40px;
+}
+.tc-inbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.tc-eyebrow {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.tc-inbox h1 {
+  margin: 8px 0;
+  font-size: 28px;
+  letter-spacing: -0.03em;
+}
+.tc-count {
+  color: var(--text-faint);
+  font-size: 18px;
+  margin-left: 6px;
+  font-weight: 400;
+}
+.tc-inbox-header p,
+.tc-empty p {
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.6;
+}
+.tc-inbox-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.tc-inbox-list li {
+  margin: 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+button.tc-inbox-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  height: auto;
+  gap: 24px;
+  padding: 18px 10px;
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  white-space: normal;
+}
+button.tc-inbox-row:hover,
+button.tc-inbox-row:focus-visible {
+  background: var(--background-modifier-hover);
+}
+.tc-row-main {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.tc-row-title {
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.tc-row-workspace,
+.tc-inbox-row time {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.tc-inbox-row time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.tc-inbox-footer {
+  margin-top: 24px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.tc-empty {
+  padding: 42px 0;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.tc-empty h2 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 10px;
+}
+.tc-empty button {
+  margin-top: 20px;
+}
+.thought-craft-capture {
+  width: min(540px, 95vw);
+}
+.tc-capture-input {
+  display: block;
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  padding: 14px;
+  line-height: 1.65;
+  font-size: var(--font-ui-medium);
+}
+.tc-capture-context {
+  display: flex;
+  gap: 14px;
+  margin: 16px 0;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+.tc-workspace-name {
+  color: var(--text-normal);
+  overflow-wrap: anywhere;
+}
+.tc-capture-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-top: 16px;
+}
+.tc-keyboard-hint {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.5;
+}
+.tc-error {
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.tc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 600px) {
+  .tc-inbox {
+    padding: 24px 18px;
+  }
+  .tc-inbox-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .tc-inbox-row time {
+    max-width: 110px;
+    line-height: 1.5;
+  }
+  .tc-capture-footer {
+    align-items: flex-end;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  button.tc-inbox-row {
+    transition: background-color 140ms ease;
+  }
+}
+
+.tc-focus {
+  overflow: auto;
+  padding: 24px 32px 40px;
+}
+.tc-focus-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 36px;
+}
+
+.tc-relationships {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.tc-relationships h3 {
+  margin: 18px 0 6px;
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.tc-relation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tc-relation-row {
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.tc-relation-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+button.tc-entity-link {
+  height: auto;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+button.tc-entity-link:hover {
+  color: var(--interactive-accent);
+  text-decoration: underline;
+}
+.tc-relation-type {
+  display: block;
+  margin-top: 5px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+button.tc-relation-remove {
+  height: auto;
+  padding: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+button.tc-relation-remove:hover {
+  color: var(--text-error);
+}
+.tc-missing-target {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.tc-add-relation-modal select[size] {
+  height: auto;
+  padding: 8px;
+  background: var(--background-primary);
+}
+.tc-add-relation-modal select[size] option {
+  padding: 8px 4px;
+  white-space: normal;
+}
+.tc-focus-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin-inline-start: auto;
+}
+.tc-focus-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  height: auto;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--button-radius, 5px);
+  font-size: var(--font-ui-small);
+  line-height: 1.4;
+  white-space: normal;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  box-shadow: none;
+  cursor: pointer;
+}
+.tc-focus-toolbar button svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.tc-focus-toolbar button.tc-focus-back {
+  justify-content: flex-start;
+  border-color: transparent;
+  color: var(--text-muted);
+  background: transparent;
+}
+.tc-focus-toolbar button.tc-focus-create {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+  background: var(--background-secondary);
+  font-weight: 500;
+}
+.tc-focus-toolbar button:not(:disabled):hover {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border-hover);
+  background: var(--background-modifier-hover);
+}
+.tc-focus-toolbar button.tc-focus-create:not(:disabled):hover {
+  color: var(--text-normal);
+  border-color: var(--interactive-accent-hover);
+}
+.tc-focus-toolbar button:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 3px;
+}
+.tc-focus-toolbar button:disabled {
+  opacity: var(--disabled-opacity, 0.5);
+  cursor: not-allowed;
+}
+.tc-focus-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.tc-focus-main {
+  min-width: 0;
+  padding: 0 8px;
+}
+.tc-focus-main h1 {
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  margin: 12px 0 28px;
+  overflow-wrap: anywhere;
+}
+.tc-focus-markdown {
+  font-size: var(--font-text-size);
+  line-height: var(--line-height-normal);
+}
+.tc-focus-inspector {
+  border-left: 1px solid var(--background-modifier-border);
+  padding-left: 24px;
+  min-width: 0;
+}
+.tc-inspector-content h2 {
+  font-size: var(--font-ui-medium);
+  margin: 0 0 18px;
+}
+.tc-inspector-hint,
+.tc-property-issues {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.tc-property-row {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.tc-property-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.tc-property-heading label {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+button.tc-property-remove {
+  padding: 0;
+  height: auto;
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+button.tc-property-remove:hover {
+  color: var(--text-error);
+}
+.tc-property-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tc-property-control input:not([type='checkbox']),
+.tc-property-control select {
+  width: 100%;
+  min-width: 0;
+}
+.tc-rating-maximum,
+.tc-property-feedback {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+}
+.tc-property-feedback {
+  display: block;
+  margin-top: 6px;
+}
+.tc-add-property {
+  margin-top: 16px;
+  background: transparent;
+  color: var(--interactive-accent);
+  box-shadow: none;
+}
+.tc-entity-metadata {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.tc-entity-metadata summary {
+  cursor: pointer;
+}
+.tc-entity-metadata dl {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 10px 12px;
+}
+.tc-entity-metadata dd {
+  margin: 0;
+  color: var(--text-normal);
+  overflow-wrap: anywhere;
+}
+/* Keep native focus scrolling clear of the modal viewport's edges. */
+.modal-content:has(.tc-property-form) {
+  scroll-padding: var(--size-4-2, 8px);
+}
+/* Reserve room for focus outlines inside scrollable modal content. */
+.tc-property-form {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: var(--size-4-1, 4px);
+}
+.tc-property-form label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--font-ui-small);
+}
+.tc-property-form label[hidden] {
+  display: none;
+}
+.tc-property-form input,
+.tc-property-form select,
+.tc-property-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.tc-property-form fieldset {
+  min-width: 0;
+  margin: 0;
+}
+/* Native form controls keep an accent outline for mouse and keyboard focus. */
+.tc-property-form :is(input, select, textarea):focus,
+.tc-property-form :focus-visible,
+.tc-types-layout :focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+.tc-property-form-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.tc-remove-confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: var(--font-ui-smaller);
+}
+.tc-remove-confirmation span {
+  flex-basis: 100%;
+  color: var(--text-muted);
+}
+.tc-remove-confirmation button {
+  font-size: inherit;
+}
+.tc-property-row .tc-error {
+  margin-top: 8px;
+}
+.tc-property-row .tc-error button {
+  display: block;
+  margin-top: 8px;
+}
+.tc-focus :focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 3px;
+}
+@media (max-width: 800px) {
+  .tc-focus {
+    padding: 20px;
+  }
+  .tc-focus-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .tc-focus-inspector {
+    border-left: 0;
+    border-top: 1px solid var(--background-modifier-border);
+    padding: 24px 0 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tc-property-row {
+    animation: tc-property-appear 140ms ease-out;
+  }
+  .tc-focus button {
+    transition:
+      background-color 140ms ease,
+      color 140ms ease;
+  }
+  @keyframes tc-property-appear {
+    from {
+      opacity: 0.3;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+/* Global schema configuration stays separate from the content-focused inspector. */
+.tc-type-manager {
+  width: min(880px, 92vw);
+}
+.tc-type-manager .modal-content {
+  max-height: 75vh;
+  overflow: auto;
+}
+.tc-types-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 32px;
+}
+.tc-types-layout nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  border-right: 1px solid var(--background-modifier-border);
+  padding-right: 20px;
+}
+.tc-types-layout nav button {
+  text-align: left;
+  box-shadow: none;
+  background: transparent;
+  height: auto;
+  padding: 9px;
+  white-space: normal;
+}
+.tc-types-layout nav button[aria-current] {
+  color: var(--text-accent);
+  background: var(--background-secondary);
+}
+.tc-type-detail {
+  min-width: 0;
+}
+.tc-type-detail h2 {
+  margin-top: 18px;
+}
+.tc-type-detail h3 {
+  margin-top: 28px;
+}
+.tc-schema-list {
+  list-style: none;
+  padding: 0;
+}
+.tc-schema-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 8px 0;
+  gap: 12px;
+}
+.tc-schema-list button {
+  box-shadow: none;
+  background: transparent;
+  padding-left: 0;
+}
+.tc-schema-list span {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.tc-schema-form {
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: 20px;
+}
+.tc-property-form .tc-inline-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tc-type-properties {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.tc-orphan-values {
+  margin-top: 16px;
+  font-size: var(--font-ui-small);
+  overflow-wrap: anywhere;
+}
+.tc-orphan-values dd {
+  margin: 4px 0 12px;
+  color: var(--text-muted);
+}
+@media (max-width: 650px) {
+  .tc-types-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .tc-types-layout nav {
+    border: 0;
+  }
+}
+
+.tc-workspace-switcher {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.tc-workspace-switcher label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.tc-workspace-switcher select {
+  max-width: min(260px, 60vw);
+}
+.tc-workspace-switcher button {
+  box-shadow: none;
+}
+.tc-focus-workspace {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin-top: 10px;
+}
+.tc-workspace-manager {
+  width: min(880px, 92vw);
+}
+.tc-workspace-manager .modal-content {
+  max-height: 75vh;
+  overflow: auto;
+}
+.tc-type-choices {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: 12px;
+}
+.tc-type-choices legend {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+.tc-property-form .tc-type-choices label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.tc-property-form .tc-type-choices input[type='checkbox'],
+.tc-property-form .tc-inline-check input[type='checkbox'] {
+  width: var(--checkbox-size, 16px);
+  height: var(--checkbox-size, 16px);
+  flex: 0 0 var(--checkbox-size, 16px);
+}
+
+.tc-workspace-switcher :focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 3px;
+}
+
+/* Brainstorm remains a view: canvas-library styles are confined to its surface. */
+.tc-brainstorm-container {
+  padding: 0;
+  overflow: hidden;
+}
+.tc-brainstorm {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 320px;
+}
+.tc-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px 24px 12px;
+}
+.tc-board-header .tc-workspace-switcher {
+  margin-bottom: 0;
+}
+.tc-view-switcher {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.tc-board-header .tc-view-switcher {
+  margin-bottom: 0;
+}
+.tc-view-switcher button {
+  box-shadow: none;
+}
+.tc-view-switcher button[aria-current='page'] {
+  border: 1px solid var(--interactive-accent);
+  color: var(--text-normal);
+  background: var(--background-secondary);
+}
+.tc-board-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0 24px 14px;
+}
+.tc-board-actions,
+.tc-board-selection-actions,
+.tc-board-viewport-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tc-board-toolbar button {
+  min-height: 30px;
+  box-shadow: none;
+  font-size: var(--font-ui-small);
+}
+.tc-board-selection-actions {
+  margin-inline-start: auto;
+}
+.tc-board-viewport-controls output {
+  min-width: 42px;
+  text-align: center;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+.tc-board-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+  border-block: 1px solid var(--background-modifier-border);
+}
+.tc-brainstorm .react-flow {
+  --xy-background-color: var(--background-primary-alt);
+  --xy-background-pattern-dots-color: var(--background-modifier-border);
+  --xy-edge-stroke: var(--text-faint);
+  --xy-edge-stroke-selected: var(--interactive-accent);
+  --xy-connectionline-stroke: var(--interactive-accent);
+  --xy-edge-stroke-width: 1.25;
+}
+.tc-entity-node {
+  width: 220px;
+  min-height: 110px;
+  padding: 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+  color: var(--text-normal);
+  background: var(--background-primary);
+  cursor: grab;
+}
+.tc-entity-node:active {
+  cursor: grabbing;
+}
+.tc-entity-node:hover {
+  border-color: var(--background-modifier-border-hover);
+}
+.tc-brainstorm .react-flow__node.selected .tc-entity-node {
+  border-color: var(--interactive-accent);
+}
+.tc-brainstorm .react-flow__node:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-m, 8px);
+}
+.tc-board-card-type {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+.tc-board-card-type svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+.tc-entity-node h3 {
+  margin: 12px 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tc-brainstorm button.tc-board-open {
+  height: auto;
+  padding: 2px 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+.tc-brainstorm button.tc-board-open:hover {
+  color: var(--text-accent);
+  text-decoration: underline;
+}
+.tc-brainstorm .react-flow__handle {
+  width: 9px;
+  height: 9px;
+  background: var(--text-faint);
+  border: 2px solid var(--background-primary);
+}
+.tc-brainstorm .react-flow__handle:hover {
+  background: var(--interactive-accent);
+}
+.tc-brainstorm .react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--text-muted);
+}
+.tc-brainstorm .tc-board-edge-incompatible .react-flow__edge-path {
+  stroke-dasharray: 4 3;
+}
+.tc-brainstorm .react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--interactive-accent);
+  stroke-width: 2;
+}
+.tc-brainstorm :is(button, select):focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+.tc-board-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: min(420px, 85%);
+  text-align: center;
+  padding: 20px;
+  background: var(--background-primary-alt);
+  border-radius: var(--radius-m, 8px);
+}
+.tc-board-empty h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+.tc-board-empty p,
+.tc-board-hint {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.tc-board-empty > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+.tc-board-hint {
+  margin: 0;
+  padding: 10px 24px;
+}
+.tc-board-error {
+  padding: 0 24px 10px;
+}
+.tc-board-add-modal select[size] {
+  height: auto;
+  padding: 8px;
+}
+.tc-board-add-modal option {
+  padding: 8px 4px;
+  white-space: normal;
+}
+.tc-focus-workspace-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tc-focus-workspace-row button {
+  height: auto;
+  padding: 4px 8px;
+  box-shadow: none;
+  font-size: var(--font-ui-smaller);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tc-entity-node {
+    transition: border-color 120ms ease;
+  }
+}
+@media (max-width: 650px) {
+  .tc-board-header {
+    padding: 14px 16px 10px;
+  }
+  .tc-board-toolbar {
+    padding: 0 16px 12px;
+  }
+  .tc-board-selection-actions {
+    margin-inline-start: 0;
+  }
+  .tc-board-hint {
+    padding-inline: 16px;
+  }
+}
+
+.tc-board-toolbar button,
+.tc-board-header button,
+.tc-focus-workspace-row button {
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  cursor: pointer;
+}
+.tc-board-toolbar button.mod-cta {
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+}
+.tc-board-toolbar button:not(:disabled):hover,
+.tc-board-header button:not(:disabled):hover,
+.tc-focus-workspace-row button:not(:disabled):hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+}
+.tc-board-toolbar button.mod-cta:not(:disabled):hover {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
+}
+.tc-brainstorm .react-flow__handle {
+  border-radius: 50%;
+}
+.tc-brainstorm .react-flow__attribution {
+  background: var(--background-primary-alt);
+}
+.tc-brainstorm .react-flow__attribution a {
+  color: var(--text-faint);
+}

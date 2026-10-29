@@ -1,6 +1,6 @@
-# Thought Craft — M4
+# Thought Craft — M5
 
-An Obsidian community plugin built around **Entity + Property + Relation**. Capture ideas, inspect local properties, connect entities by UUID, and create new entities from existing ones. Built-in and custom Entity Types share the same Focus View, reusable property schemas and UUID relations. Markdown remains the source of truth for entity data; Entity Type/property schemas are global vault configuration. Workspaces scope creation and Inbox, and define custom relation types.
+An Obsidian community plugin built around **Entity + Property + Relation**. Capture ideas, inspect local properties, connect entities by UUID, and create new entities from existing ones. Built-in and custom Entity Types share the same Focus View, reusable property schemas and UUID relations. Markdown remains the source of truth for entity data; Entity Type/property schemas are global vault configuration. Workspaces scope creation and Inbox, and define custom relation types. Brainstorm adds one curated spatial board per Workspace, as a view of the same Markdown entities and relations.
 
 ## Develop
 
@@ -15,7 +15,7 @@ npm test             # focused Vitest unit tests, no Obsidian mock runtime
 npm run check        # build, lint and tests
 ```
 
-The release/install files are `main.js`, `manifest.json`, and `styles.css`. React is bundled into `main.js`; Obsidian's runtime API is external. Neither Node.js nor npm is needed by the installed plugin.
+The release/install files remain `main.js`, `manifest.json`, and `styles.css`. Edit **`src/styles.css`**, which retains the validated Focus/modal styles and imports React Flow base styles; esbuild generates root `styles.css` alongside `main.js`. Both generated files include bundled dependency notices from `THIRD_PARTY_NOTICES.txt`. React is bundled into `main.js`; Obsidian's runtime API is external. Neither Node.js nor npm is needed by the installed plugin.
 
 Permanent coding expectations are documented in [AGENTS.md](AGENTS.md). Code and tests are written for human readers; formatting improvements stay local to touched modules.
 
@@ -53,7 +53,7 @@ Capture uses the active Workspace. The existing Idea folder remains configurable
 
 Use **Save** after editing settings. Invalid or absolute folder paths are rejected. Changing settings does not move existing notes. The Inbox displays inbox Ideas in the active Workspace, wherever their notes live. Its query is not limited to the capture folder; switching Workspace does not change entity membership or close open Focus/Markdown tabs.
 
-Settings use Obsidian's `loadData` / `saveData` APIs. `data.json` contains capture settings, `configVersion: 4`, `entityTypes`, `workspaces` and `activeWorkspaceId`. These are configuration only: entity identity, values, relations and content remain in Markdown. M0–M3 configuration migrates without rewriting notes; missing built-ins are seeded once with no opinionated properties. Unknown configuration fields and unreadable individual type definitions are retained. A malformed type-list root or a newer configuration version blocks loading rather than overwriting configuration.
+Settings use Obsidian's `loadData` / `saveData` APIs. `data.json` contains capture settings, `configVersion: 5`, `entityTypes`, `workspaces`, `activeWorkspaceId` and optional `boards` visual state. These are definitions, UI context and board-only visual state: entity identity, values, relations and content remain in Markdown. M0–M4 configuration migrates without rewriting notes; missing built-ins are seeded once with no opinionated properties. Unknown configuration fields and unreadable individual type definitions are retained. A malformed type-list root or a newer configuration version blocks loading rather than overwriting configuration.
 
 ### Entity destinations
 
@@ -131,6 +131,37 @@ Text, number and rating inputs commit on **Enter** or **blur**; **Escape** disca
 The `bs_properties` format above is the same nested mapping used for every type. Text, number and boolean definitions contain `label`, `type`, and `value`; rating adds `max`; select adds `options`. Local definitions remain unchanged. They are separate from reusable schemas, and no parallel JSON entity storage or database is introduced.
 
 Invalid custom-property definitions are reported in Focus and retained verbatim in frontmatter. Valid neighboring properties remain editable. A malformed `bs_properties` container is never silently replaced; repair it in the Markdown note before making property changes. Unknown keys inside valid definitions are preserved on value updates.
+
+## Brainstorm Board
+
+Choose **Brainstorm** beside Inbox, or run **Thought Craft: Open brainstorm**. The active Workspace remains visible and switchable. Each Workspace has one curated board: existing entities are never placed automatically.
+
+- **+ Idea** reuses Quick Capture and creates a real Markdown Idea in the board’s Workspace, then places its UUID near the current viewport centre. Idea must be enabled there.
+- **+ Add existing** searches titles/types in that Workspace, excluding entities already placed. It changes layout only.
+- Drag cards freely, or select a focused card with Space and use arrow keys. Positions save on release/settled keyboard movement, not during pointer motion. Pan by dragging empty canvas; scroll/pinch to zoom. **Fit**, zoom buttons and last viewport work per Workspace.
+- Double-click a card, press Enter on its focused wrapper, or choose **Open** to use the existing Focus View. For other enabled types, use Focus → Create From, then **Add to Brainstorm**; there is no row of per-type creation buttons.
+- Focus offers **Add to Brainstorm** / **Open in Brainstorm** for its entity’s actual Workspace. That explicit action switches to the relevant Workspace when necessary.
+- **Remove from board** removes visual membership only. The note, properties and relations remain intact. Delete/Backspace shortcuts do not remove entities or placements.
+- Drag a source handle onto a target handle, then choose a valid relationship kind. No edge is added until the existing repository successfully saves `bs_relations`. For a keyboard alternative, select a card and use **Connect…**.
+- Select an edge and use **Remove relationship**. Confirmation removes that actual Markdown relation; this differs deliberately from removing a card.
+
+Cards share one generic renderer with native icon, registry type label and filename-derived title. Unknown/retired/disabled entity types remain safe and openable. Only edges with both endpoints placed in the current Workspace are rendered; dangling/off-board/cross-Workspace links remain available through Focus. Definition/label changes and external note/relation edits refresh the view. File renames retain UUID placement; deletion/membership changes hide stale cards and safely clean layout after the index is ready.
+
+Only useful visual state is persisted, lazily, in `data.json`:
+
+```json
+{
+  "workspaceId": "default",
+  "nodes": {
+    "ca829f16-35b0-4e68-857b-d54cfc73caed": { "x": 120, "y": 80 }
+  },
+  "viewport": { "x": 0, "y": 0, "zoom": 1 }
+}
+```
+
+`boards` contains one such entry per touched Workspace. It has no copied titles, content, properties, relations, selection or React Flow metadata. Coordinates never enter Markdown. Retiring a Workspace retains its layout for restoration. A saved layout is never pruned during partial startup indexing.
+
+The canvas uses **`@xyflow/react` 12.12.0**, bundled locally. Its documented [drag/viewport interactions](https://reactflow.dev/api-reference/react-flow) and [keyboard support](https://reactflow.dev/learn/advanced-use/accessibility) avoid a custom pan/zoom engine. All library types stay in `ui/brainstorm`; application/domain state remains independent. No Redux/Zustand application store is added; React Flow’s own internal dependencies are confined to the canvas adapter.
 
 ## Workspaces
 
@@ -228,12 +259,16 @@ src/
     entity-type.ts                          Open type IDs, reusable definitions and built-in presentation seeds
     entity-relation.ts                      Directed UUID edges and validation
     workspace.ts                            Workspace and custom relation definitions
+    board.ts                                Positions, viewport and visual state only
   application/
     capture-idea.ts                          Validate input, generate UUID and timestamp
     open-entity.ts                           Resolve identity to current note path
     entity-properties.ts                     Property write intentions accepted by the repository
     create-entity.ts                         Generic writer contract and Create From use case
     entity-relations.ts                      Relation write intentions
+    workspace-board-store.ts                 Serialized per-Workspace visual state
+    board-actions.ts                         Board creation and available relation choices
+    board-projection.ts                      Derived entities/relations for placed UUIDs
     entity-type-registry.ts                  Global schema lookup, mutations and subscriptions
     entity-schema-values.ts                  Explicit schema value write intentions
     workspace-registry.ts                    Workspace configuration and active context
@@ -267,13 +302,15 @@ src/
     types/type-manager-modal.tsx             Native modal with global schema forms
     workspaces/workspace-manager-modal.tsx    Workspace types and relation configuration
     workspaces/workspace-switcher.tsx         Compact active Workspace selection
+    brainstorm/                              ItemView, canvas adapter, cards/edges, toolbar and dialogs
+  styles.css                                 Authored stylesheet; root styles.css is generated
 ```
 
 ### Decisions
 
 - **Markdown is authoritative.** There is no database, entity JSON file or bulk note migration. Only reusable definitions are versioned in plugin configuration. Disabling/uninstalling the plugin leaves readable notes.
 - **Frontmatter uses the host API.** New files begin with an empty frontmatter envelope. `FileManager.processFrontMatter()` adds the metadata, preserving the Markdown body, including user input that itself contains `---` and YAML-looking text. If this API fails, the original text remains in the created file and the capture modal reports its recovery path.
-- **The index is a projection.** It remains a simple UUID-keyed map. Entities include parsed local properties, relations and their issues, plus raw schema values. Schema lookup and notifications belong to the injected registry; EntityIndex remains unchanged in M4; Workspace filtering scans the existing Inbox projection. Outgoing queries resolve UUID targets; incoming queries scan current entities. Changes notify Inbox and Focus; the initial scan also announces readiness so a restored Focus tab can distinguish loading from a missing entity.
+- **The index is a projection.** It remains a simple UUID-keyed map. Entities include parsed local properties, relations and their issues, plus raw schema values. Schema lookup and notifications belong to the injected registry; EntityIndex remains unchanged in M5; Workspace filtering scans the existing Inbox projection. Outgoing queries resolve UUID targets; incoming queries scan current entities. Changes notify Inbox and Focus; the initial scan also announces readiness so a restored Focus tab can distinguish loading from a missing entity.
 - **Initialization waits for layout-ready.** Event handlers are attached after layout initialization, then Markdown notes are read in small asynchronous batches. This avoids treating initialization `create` events as new captures.
 - **External changes use Vault events.** Create/modify read the current file via the Vault API and parse frontmatter using Obsidian's parser. Delete removes the path; rename updates paths and titles without generating new IDs. Folder operations use path boundaries so `Ideas` never matches `Ideas2`.
 - **Stale reads cannot resurrect renamed/deleted files.** Per-path revisions plus current-file checks reject obsolete asynchronous read results. All Vault listeners use `registerEvent`; repository and React cleanup are registered with the plugin lifecycle.
@@ -292,26 +329,32 @@ npm run test:obsidian:m1
 npm run test:obsidian:m2
 npm run test:obsidian:m3
 npm run test:obsidian:m4
+npm run test:obsidian:m5
 ```
 
-These opt-in Linux checks open a **real Obsidian process**, using isolated application profiles and disposable vaults under `.artifacts/`. They enable only the locally built plugin. M0 covers capture and synchronization; M1 covers Focus and custom properties; M2 covers relations, Create From, generic types, malformed external entries, dangling targets and restarts. M3 covers type/schema configuration, all five value kinds, virtual defaults, legacy values, retirement, custom folders, unknown types and configuration loss/restoration. M4 covers Workspace migration/switching, creation restrictions, custom relations, cross-Workspace policies, compatibility feedback and retirement. They do not use your normal Obsidian profile or vaults. Each closes its own test process after the run. A Linux desktop session is required.
+These opt-in Linux checks open a **real Obsidian process**, using isolated application profiles and disposable vaults under `.artifacts/`. They enable only the locally built plugin. M0 covers capture and synchronization; M1 covers Focus and custom properties; M2 covers relations, Create From, generic types, malformed external entries, dangling targets and restarts. M3 covers type/schema configuration, all five value kinds, virtual defaults, legacy values, retirement, custom folders, unknown types and configuration loss/restoration. M4 covers Workspace migration/switching, creation restrictions, custom relations, cross-Workspace policies, compatibility feedback and retirement. M5 covers curated board membership, real creation, drag/keyboard placement, viewport/restarts, visual relations, Workspace isolation, external synchronization and styling. They do not use your normal Obsidian profile or vaults. Each closes its own test process after the run. A Linux desktop session is required.
 
-Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md), [M3 validation](docs/m3-validation.md) and [M4 validation](docs/m4-validation.md) for results and manual checklists.
+Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md), [M3 validation](docs/m3-validation.md), [M4 validation](docs/m4-validation.md) and [M5 validation](docs/m5-validation.md) for results and manual checklists.
 
-## M4 limitations and later milestones
+## M5 limitations and later milestones
+
+Brainstorm supports one board per Workspace, free placement and basic pan/zoom. There are no named boards, groups, auto-layout, Parking Lot, drawing tools or full in-card editors. Card bodies/properties are intentionally omitted. Parallel labels are offset, but paths/labels are not routed around other cards; arrange cards manually. Layout persistence and Markdown persistence are separate: if placement fails after creating a note, the dialog reports its recovery path for Add existing rather than silently losing the note.
+
+Keyboard alternatives cover toolbar/dialog navigation, card opening, arrow positioning and relationship creation/removal. Pointer handles and the spatial arrangement are not a complete screen-reader experience, and this milestone does not claim full accessibility certification. Other platforms/mobile remain untested.
 
 Focus previews Markdown; editing the body uses Obsidian’s native note editor. Text fields remain single-line. A malformed schema-values container must be repaired in Markdown; orphaned values are shown read-only and can be recovered by restoring the schema or edited in Markdown. Invalid individual type definitions are preserved in configuration and reported; repair those definitions in `data.json` while the plugin is disabled. Configuration changes made outside the UI take effect on plugin reload. Back up plugin configuration alongside the vault when moving reusable definitions between machines.
 
 Type IDs, property keys and property types cannot be changed after creation through the UI. Type/property retirement is reversible; destructive schema deletion and automatic value migrations are deliberately unavailable. Schema ordering follows insertion order; there is no drag-and-drop ordering. Incoming relations still use a scan. Externally duplicated entity UUIDs still mean one identity and need manual repair when making independent copies. Only the current Linux Obsidian version was validated; mobile, other platforms and older versions require separate checks.
 
-Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized story/project screens, boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M5 has not been started.
+Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized story/project screens, specialized Story/Plot boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M6 has not been started.
 
 ## Files added
 
-- Plugin source and scoped UI styles: `src/**`, `styles.css`.
+- Plugin source and authored UI styles: `src/**` including `src/styles.css`. Root `main.js` and `styles.css` are generated install artifacts.
 - Manifest and compatibility metadata: `manifest.json`, `versions.json`.
 - Tooling: `package.json`, `package-lock.json`, `tsconfig.json`, `esbuild.config.mjs`, `eslint.config.mjs`, `vitest.config.ts`, `.gitignore`.
 - Focused unit tests: `tests/*.test.ts`.
-- Development installation and real-app checks: `scripts/install-dev.mjs`, `scripts/smoke-obsidian.mjs`, `scripts/smoke-m1.mjs`, `scripts/smoke-m2.mjs`, `scripts/smoke-m3.mjs`, `scripts/smoke-m4.mjs`.
-- Documentation: `AGENTS.md`, this README, and `docs/m0-validation.md`, `docs/m1-validation.md`, `docs/m2-validation.md`, `docs/m3-validation.md`, `docs/m4-validation.md`, `docs/architecture.md`.
-- Generated local artifacts: `main.js` and ignored `.artifacts/` evidence. These are not source files.
+- Development installation and real-app checks: `scripts/install-dev.mjs`, `scripts/smoke-obsidian.mjs`, `scripts/smoke-m1.mjs`, `scripts/smoke-m2.mjs`, `scripts/smoke-m3.mjs`, `scripts/smoke-m4.mjs`, `scripts/smoke-m5.mjs`.
+- Documentation: `AGENTS.md`, this README, and `docs/m0-validation.md`, `docs/m1-validation.md`, `docs/m2-validation.md`, `docs/m3-validation.md`, `docs/m4-validation.md`, `docs/m5-validation.md`, `docs/architecture.md`.
+- Bundled dependency notices: `THIRD_PARTY_NOTICES.txt`.
+- Generated local artifacts: `main.js`, `styles.css` and ignored `.artifacts/` evidence. These are not source files.

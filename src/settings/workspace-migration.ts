@@ -11,7 +11,7 @@ export function migrateWorkspaces(
   activeWorkspaceId: unknown;
 } {
   const saved = isRecord(data) ? data : {};
-  if (typeof saved.configVersion === 'number' && saved.configVersion > 4) {
+  if (typeof saved.configVersion === 'number' && saved.configVersion > 5) {
     throw new Error('This configuration was created by a newer Thought Craft version.');
   }
   if (saved.workspaces !== undefined) {
@@ -30,7 +30,11 @@ export function migrateWorkspaces(
   // Preserve an explicitly configured pre-M4 capture destination as a definition,
   // without inferring or renaming workspace IDs from the user's notes.
   const legacy = saved.defaultWorkspace;
-  if (saved.configVersion !== 4 && isEntityType(legacy) && legacy !== 'default') {
+  if (
+    (typeof saved.configVersion !== 'number' || saved.configVersion < 4) &&
+    isEntityType(legacy) &&
+    legacy !== 'default'
+  ) {
     workspaces.push({ ...workspaces[0]!, id: legacy, label: legacy, builtIn: false });
   }
   return {

@@ -299,7 +299,7 @@ try {
   const settingsData = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
   assert.equal(settingsData.entitiesFolder, 'Custom/Ideas');
   assert.equal(settingsData.defaultWorkspace, 'novel');
-  assert.equal(settingsData.configVersion, 4);
+  assert.equal(settingsData.configVersion, 5);
   assert.equal(settingsData.entityTypes.length, 5);
   assert.equal(settingsData.entities, undefined);
   assert.match(

@@ -6,3 +6,5 @@ main.js
 coverage/
 *.log
 .DS_Store
+
+/styles.css

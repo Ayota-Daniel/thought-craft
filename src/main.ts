@@ -1,3 +1,6 @@
+import { WorkspaceBoardStore } from './application/workspace-board-store';
+import { nextBoardPosition } from './domain/board';
+import { BrainstormView, BRAINSTORM_VIEW_TYPE } from './ui/brainstorm/brainstorm-view';
 import { WorkspaceRegistry } from './application/workspace-registry';
 import { RelationTypeRegistry } from './application/relation-type-registry';
 import { migrateWorkspaces } from './settings/workspace-migration';
@@ -24,6 +27,7 @@ export default class ThoughtCraftPlugin extends Plugin {
   registry!: EntityTypeRegistry;
   workspaces!: WorkspaceRegistry;
   relationTypes!: RelationTypeRegistry;
+  boards!: WorkspaceBoardStore;
   private workspaceManager: WorkspaceManagerModal | null = null;
   private configWrites: Promise<void> = Promise.resolve();
   private typeManager: TypeManagerModal | null = null;
@@ -56,6 +60,26 @@ export default class ThoughtCraftPlugin extends Plugin {
         }),
     );
     this.relationTypes = new RelationTypeRegistry(this.workspaces, this.registry);
+    this.boards = new WorkspaceBoardStore(
+      isRecord(data) ? data.boards : undefined,
+      this.workspaces,
+      this.entityIndex,
+      (boards) => this.saveConfiguration({ boards: [...boards, ...this.boards.unreadableBoards] }),
+    );
+    this.register(() => this.boards.dispose());
+    this.register(
+      this.entityIndex.subscribe(() => {
+        void this.boards.cleanupDeletedEntities().catch((error: unknown) => {
+          if (!this.disposed) {
+            console.error('Thought Craft: board cleanup failed.', error);
+            new Notice('The board layout could not be cleaned up. Missing entities remain hidden.');
+          }
+        });
+      }),
+    );
+    if (this.boards.issues.length) {
+      new Notice('Some board layouts could not be read. Their configuration is preserved.');
+    }
     if (this.workspaces.issues.length) {
       new Notice('Some workspace definitions could not be read. Their configuration is preserved.');
     }
@@ -86,6 +110,9 @@ export default class ThoughtCraftPlugin extends Plugin {
         this.registry,
         () => this.openWorkspaceManager(),
         () => this.openCapture(),
+        () => {
+          void this.showBrainstorm();
+        },
         (id) => {
           void this.openEntityFocus(id);
         },
@@ -122,9 +149,44 @@ export default class ThoughtCraftPlugin extends Plugin {
         (typeId) => this.openTypeManager(typeId),
         this.workspaces,
         this.relationTypes,
+        this.boards,
+        (id) => {
+          void this.openInBrainstorm(id);
+        },
       );
       this.register(() => view.disposeFocus());
       return view;
+    });
+    this.registerView(BRAINSTORM_VIEW_TYPE, (leaf) => {
+      const view = new BrainstormView(
+        leaf,
+        {
+          index: this.entityIndex,
+          types: this.registry,
+          workspaces: this.workspaces,
+          relations: this.relationTypes,
+          boards: this.boards,
+          writer: this.repository,
+        },
+        {
+          openFocus: (id) => {
+            void this.openEntityFocus(id);
+          },
+          showInbox: () => {
+            void this.showInbox();
+          },
+          manageWorkspaces: () => this.openWorkspaceManager(),
+        },
+      );
+      this.register(() => view.disposeBoard());
+      return view;
+    });
+    this.addCommand({
+      id: 'open-brainstorm',
+      name: 'Open brainstorm',
+      callback: () => {
+        void this.showBrainstorm();
+      },
     });
     this.addCommand({
       id: 'manage-workspaces',
@@ -258,13 +320,13 @@ export default class ThoughtCraftPlugin extends Plugin {
       .then(async () => {
         const raw: unknown = await this.loadData();
         const existing = isRecord(raw) ? raw : {};
-        if (typeof existing.configVersion === 'number' && existing.configVersion > 4) {
+        if (typeof existing.configVersion === 'number' && existing.configVersion > 5) {
           throw new Error('This configuration was created by a newer Thought Craft version.');
         }
         const next = {
           ...existing,
           ...(typeof changes === 'function' ? changes(existing) : changes),
-          configVersion: 4,
+          configVersion: 5,
         };
         await this.saveData(next);
         this.settings = settingsFromData(next);
@@ -291,6 +353,44 @@ export default class ThoughtCraftPlugin extends Plugin {
       },
     );
     this.captureModal.open();
+  }
+
+  private async openInBrainstorm(entityId: string): Promise<void> {
+    try {
+      const entity = this.entityIndex.getById(entityId);
+      if (!entity) {
+        throw new Error('This entity is no longer available.');
+      }
+      const workspace = this.workspaces.get(entity.workspaceId);
+      if (!workspace || workspace.retired) {
+        throw new Error('Restore or configure this Workspace before using its board.');
+      }
+      if (!this.boards.getBoard(workspace.id).nodes[entityId]) {
+        await this.boards.addEntity(
+          workspace.id,
+          entityId,
+          nextBoardPosition(this.boards.getBoard(workspace.id)),
+        );
+      }
+      await this.workspaces.setActive(workspace.id);
+      await this.showBrainstorm();
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : 'Could not open Brainstorm.');
+    }
+  }
+
+  private async showBrainstorm(): Promise<void> {
+    try {
+      const leaf =
+        this.app.workspace.getLeavesOfType(BRAINSTORM_VIEW_TYPE)[0] ??
+        this.app.workspace.getLeaf('tab');
+      if (leaf.view.getViewType() !== BRAINSTORM_VIEW_TYPE) {
+        await leaf.setViewState({ type: BRAINSTORM_VIEW_TYPE, active: true });
+      }
+      await this.app.workspace.revealLeaf(leaf);
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : 'Could not open Brainstorm.');
+    }
   }
 
   private async showInbox(): Promise<void> {

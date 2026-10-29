@@ -1,3 +1,4 @@
+import type { WorkspaceBoardStore } from '../../application/workspace-board-store';
 import type { WorkspaceRegistry } from '../../application/workspace-registry';
 import type { RelationTypeRegistry } from '../../application/relation-type-registry';
 import {
@@ -32,6 +33,8 @@ export class FocusView extends ItemView {
   private unsubscribeTypes: (() => void) | null = null;
   private unsubscribeWorkspaces: (() => void) | null = null;
   private workspaceLabelEl: HTMLElement | null = null;
+  private unsubscribeBoards: (() => void) | null = null;
+  private boardButtonEl: HTMLButtonElement | null = null;
   private entityId: string | null = null;
   private headingEl: HTMLElement | null = null;
   private bodyEl: HTMLElement | null = null;
@@ -56,6 +59,8 @@ export class FocusView extends ItemView {
     private manageType: (typeId: string) => void,
     private workspaces: WorkspaceRegistry,
     private relationTypes: RelationTypeRegistry,
+    private boards: WorkspaceBoardStore,
+    private openInBoard: (entityId: string) => void,
   ) {
     super(leaf);
   }
@@ -120,7 +125,17 @@ export class FocusView extends ItemView {
     const layout = this.contentEl.createDiv({ cls: 'tc-focus-layout' });
     const content = layout.createEl('article', { cls: 'tc-focus-main' });
     this.typeLabelEl = content.createSpan({ cls: 'tc-eyebrow' });
-    this.workspaceLabelEl = content.createDiv({ cls: 'tc-focus-workspace' });
+    const workspaceRow = content.createDiv({ cls: 'tc-focus-workspace-row' });
+    this.workspaceLabelEl = workspaceRow.createDiv({ cls: 'tc-focus-workspace' });
+    this.boardButtonEl = workspaceRow.createEl('button', {
+      text: 'Add to Brainstorm',
+      attr: { type: 'button' },
+    });
+    this.boardButtonEl.addEventListener('click', () => {
+      if (this.entityId) {
+        this.openInBoard(this.entityId);
+      }
+    });
     this.headingEl = content.createEl('h1');
     this.bodyEl = content.createDiv({ cls: 'tc-focus-markdown' });
 
@@ -129,6 +144,9 @@ export class FocusView extends ItemView {
       attr: { 'aria-label': 'Entity properties' },
     });
     this.inspectorRoot = createRoot(inspector);
+    this.unsubscribeBoards = this.boards.subscribe(() => {
+      void this.refreshEntity();
+    });
     this.unsubscribeWorkspaces = this.workspaces.subscribe(() => {
       void this.refreshEntity();
     });
@@ -157,6 +175,9 @@ export class FocusView extends ItemView {
 
   disposeFocus(): void {
     this.renderVersion += 1;
+    this.unsubscribeBoards?.();
+    this.unsubscribeBoards = null;
+    this.boardButtonEl = null;
     this.unsubscribeWorkspaces?.();
     this.unsubscribeWorkspaces = null;
     this.workspaceLabelEl = null;
@@ -192,6 +213,9 @@ export class FocusView extends ItemView {
           : 'Your entity will appear once the Markdown index is ready.',
       );
       this.workspaceLabelEl?.setText('');
+      if (this.boardButtonEl) {
+        this.boardButtonEl.disabled = true;
+      }
       this.inspectorRoot.render(null);
       this.markdownComponent?.unload();
       this.markdownComponent = null;
@@ -201,6 +225,16 @@ export class FocusView extends ItemView {
     this.workspaceLabelEl?.setText(
       `Workspace · ${this.workspaces.label(entity.workspaceId)}${this.workspaces.get(entity.workspaceId)?.retired ? ' · Retired' : ''}`,
     );
+    if (this.boardButtonEl) {
+      const workspace = this.workspaces.get(entity.workspaceId);
+      this.boardButtonEl.disabled = !workspace || workspace.retired;
+      this.boardButtonEl.setText(
+        this.boards.getBoard(entity.workspaceId).nodes[entity.id]
+          ? 'Open in Brainstorm'
+          : 'Add to Brainstorm',
+      );
+      this.boardButtonEl.title = `Open the Brainstorm board for ${this.workspaces.label(entity.workspaceId)}`;
+    }
     this.headingEl.setText(entity.title);
     this.typeLabelEl?.setText(`Thought Craft · ${this.registry.label(entity.type)}`);
     this.inspectorRoot.render(

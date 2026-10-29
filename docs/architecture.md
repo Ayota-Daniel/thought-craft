@@ -1,4 +1,4 @@
-# Thought Craft architecture at M4
+# Thought Craft architecture at M5
 
 ## Separate responsibilities
 
@@ -8,6 +8,7 @@
 | `EntityTypeRegistry` | Global Entity Type definitions and reusable Property Schemas |
 | `WorkspaceRegistry` | Workspace definitions, enabled type IDs, custom relation definitions and persisted active context |
 | `RelationTypeRegistry` | Resolution and validation of universal and source-Workspace custom relations |
+| `WorkspaceBoardStore` | Lazy per-Workspace UUID positions and viewport, with no copied Entity/edge data |
 | `ObsidianEntityRepository` | Real Vault/FileManager reads, writes and external synchronization |
 
 These services are injected explicitly. React sends intents to the registries/repository rather than mutating raw settings. No Redux, global singleton, per-domain subclass or specialized Novel/Product engine is introduced. There is no new database, reverse-edge store or path-to-ID map.
@@ -24,7 +25,7 @@ These services are injected explicitly. React sends intents to the registries/re
 
 ## Configuration and migration
 
-`data.json` contains `configVersion: 4`, the existing capture folder/legacy default-workspace setting, global `entityTypes`, `workspaces`, and `activeWorkspaceId`. Entity values/content/relations are never stored there.
+`data.json` contains `configVersion: 5`, the existing capture folder/legacy default-workspace setting, global `entityTypes`, `workspaces`, and `activeWorkspaceId`, plus optional lazy `boards` visual state. Entity values/content/relations are never stored there.
 
 Initialization loads global types, then performs the pure Workspace migration, constructs Workspace and relation services, and persists the migrated configuration before registering UI/rebuilding the vault index. M3 custom types/property schemas and unrelated configuration are retained. Missing `default` is seeded once with all types currently active at migration time, preserving prior creation availability. Subsequent global type creation does not automatically enable that type in existing Workspaces.
 
@@ -72,4 +73,36 @@ Property/schema/relation operations share the existing per-entity repository que
 
 EntityIndex is unchanged. Inbox Workspace filtering is linear in Inbox size; incoming lookup scans indexed entities/edges. Workspace and global-type registries use small maps by ID; relation resolution scans a small definition list. These choices target current personal-vault usage and are not scale benchmarks.
 
-UI-based entity movement is deferred: it needs explicit compatibility handling for custom relations and must never silently delete links or move files. Manual `bs_workspace` edits remain readable and reveal incompatible links when necessary. Workspace templates, specialized Story/Project screens, boards/canvases, timeline/graph views, evaluation profiles, formulas and Workspace property-schema overrides are outside M4. **M5 has not been started.**
+UI-based entity movement is deferred: it needs explicit compatibility handling for custom relations and must never silently delete links or move files. Manual `bs_workspace` edits remain readable and reveal incompatible links when necessary. Workspace templates, specialized Story/Project screens, boards/canvases, timeline/graph views, evaluation profiles, formulas and Workspace property-schema overrides are outside M4. M5 adds the generic Brainstorm Board described below; the specialized views remain deferred.
+
+## M5: Brainstorm as a view
+
+The Brainstorm Board adds `WorkspaceBoardStore`, independent of the entity/schema registries and React Flow. It holds one visual state per touched Workspace: `workspaceId`, `nodes[entityUUID] = {x,y}`, and `viewport = {x,y,zoom}`. Positions and viewport are finite/bounded; zoom is 0.35–1.75. It stores no selection, title, type, content, property values, edges or canvas-library internals. No `bs_board_*` metadata is written.
+
+Configuration now uses version 5. M4 definitions, active context and unknown configuration fields are retained by the existing merge queue. Missing board state is an empty in-memory view, persisted only after an explicit layout/viewport action. Invalid individual layouts remain preserved for recovery; malformed root board configuration blocks loading rather than overwriting data. Board mutations serialize against the latest layout, validate Workspace membership and publish after successful saving. Failure leaves previous durable state intact.
+
+`projectBoard()` resolves each placed UUID through EntityIndex, ignoring missing/moved entities, then derives edges solely from actual relations whose source and target are both placed in that Workspace. EntityIndex is unchanged. Projection costs O(placed nodes + their outgoing relations); existing incoming queries retain their scan. There is no reverse relation index, board edge store or speculative EntityIndex redesign.
+
+The main plugin observes index changes for explicit cleanup. It cannot prune while `EntityIndex.isReady()` is false, because startup indexing is incremental. Once ready, deleted/moved entity placements are removed without touching Markdown, unrelated placements or viewports. Retired/disabled/unknown type definitions do not remove existing cards. Workspace retirement preserves layout; the M4 active-context fallback naturally displays Default instead. Restoration reuses the original state.
+
+## M5: UI/library adapter
+
+`@xyflow/react` 12.12.0 handles dragging, pan/zoom, node/edge focus and geometry. Only `ui/brainstorm` imports its types. `domain/board.ts`, BoardStore and projection/action services contain ordinary Thoughtcraft data. No application Redux/Zustand layer is added; any internal state library belongs to React Flow itself. Runtime dependency licenses are recorded in `THIRD_PARTY_NOTICES.txt` and embedded into generated JS/CSS.
+
+`BrainstormView` is an Obsidian ItemView. It mounts after layout-ready to avoid measuring against a window still being restored. `BrainstormApp` reuses WorkspaceSwitcher and a small Inbox/Brainstorm navigation pair. Switching Workspace remounts the canvas adapter with that Workspace’s viewport while preserving the other saved board. `EntityNode` is one generic card using the registry label/native icon and current index Entity. `RelationEdge` uses library geometry and current relation labels; parallel labels receive a small offset. There is no custom pan/zoom engine, force layout or copied entity metadata in persistence.
+
+The adapter keeps ongoing drags, selection, node measurements and pending positions locally. Domain refreshes retain local measurements so restored cards cannot become hidden after metadata updates. Pointer movement never saves configuration; settled drag/arrow-key positions save through BoardStore. Pan/zoom saves at interaction end. Fit/zoom controls use zero-duration viewport changes; only subtle border transitions are enabled when reduced motion is off. Selection is never serialized. Delete/Backspace shortcuts are disabled; removal is an explicit named action.
+
+The existing authored stylesheet moved to `src/styles.css` with all validated Focus/modal rules intact. It imports React Flow base CSS and adds scoped Thoughtcraft board styles. esbuild generates the same root `styles.css` installation file alongside `main.js`, keeping the three-file install contract and avoiding external/CDN assets. Styling uses host variables, restrained surfaces, no node-movement animation, and visible focus states. Native dialogs reuse `.tc-property-form`, including its compact outlines, form inset and scroll clearance.
+
+## M5: intents and Markdown writes
+
+Board `+ Idea` reuses the capture use case/repository, validates the active Workspace/type/initial position, creates a real UUID Markdown entity, then adds that UUID near the initiation point. If layout saving fails afterward, the actual note remains safe and its path is reported for Add existing. There is no board-only idea store or automatic duplicate retry. Other entity types remain accessible through the existing Focus → Create From flow followed by Add to Brainstorm.
+
+Add existing searches only current-Workspace index entities not already placed. It includes readable disabled/unknown types, because availability restricts new creation rather than access. It changes visual membership only. Focus’s contextual Add/Open in Brainstorm uses the entity’s real Workspace and explicitly opens that board; source note bytes remain unchanged. Initial placements use a small nearby slot search and never rearrange existing cards.
+
+Visual connections open a native relation-kind picker. Choices come from the same relation registry/domain duplicate/self/Workspace rules used by the repository. The temporary canvas line is never stored as an edge. Only successful repository writes create a new derived edge. Stale rules show an inline error without phantom edges. The keyboard Connect action reuses the existing relation dialog with targets limited to placed entities and the same authoritative validation. Off-board/cross-Workspace/dangling links remain real Markdown relations but are omitted from the scoped canvas.
+
+Selecting an edge exposes Remove relationship with confirmation, invoking the existing expected-relation removal path. Removing a card invokes only BoardStore.removeEntity: it cannot delete/archive an entity, edit values or remove relations. External rename/body/property/relation/schema changes update projections by UUID; Focus remains the detailed editor/native-note gateway.
+
+M5 is limited to one curated board per Workspace. Named/nested boards, grouping, auto-layout, Parking Lot, drawing tools, specialized Story/Plot views, timelines, evaluations and formulas remain deferred. Keyboard support provides meaningful alternatives but is not a claim of complete assistive-technology coverage. **M6 has not been started.**
