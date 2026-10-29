@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
-  applyNodeChanges,
   applyEdgeChanges,
   Background,
   BackgroundVariant,
   ReactFlow,
   useReactFlow,
-  type NodeChange,
   type Edge,
   type EdgeChange,
   type Connection,
@@ -21,12 +19,17 @@ import {
 import { availableBoardRelations } from '../../application/board-actions';
 import { projectBoard } from '../../application/board-projection';
 import type { BoardServices, BoardCommands } from './board-services';
-import { EntityNode, type EntityFlowNode } from './entity-node';
+import { EntityNode } from './entity-node';
+import { BoardGroupNode } from './board-group';
+import { type BoardFlowNode } from './group-adapter';
+import { useBoardNodes } from './use-board-nodes';
+import { useBrainstormContext, BrainstormContext, type ContextRequest } from './brainstorm-context';
+import { groupForEntity } from '../../domain/board-group';
 import { RelationEdge } from './relation-edge';
-import { entityNodes, relationEdges } from './flow-adapter';
+import { relationEdges } from './flow-adapter';
 import { BrainstormToolbar, type BoardSelection } from './brainstorm-toolbar';
 
-const nodeTypes = { entity: EntityNode };
+const nodeTypes = { entity: EntityNode, boardGroup: BoardGroupNode };
 const edgeTypes = { relation: RelationEdge };
 const ariaLabels = {
   'node.a11yDescription.default':
@@ -41,46 +44,40 @@ export function BrainstormCanvas({
   services,
   commands,
   connectSelected,
+  contextRequest,
+  contextHandled,
 }: {
+  contextRequest: ContextRequest | null;
+  contextHandled: () => void;
   state: WorkspaceBoardState;
   version: number;
   services: BoardServices;
   commands: BoardCommands;
   connectSelected: (workspaceId: string, sourceId: string) => void;
 }) {
-  const flow = useReactFlow<EntityFlowNode, Edge>();
+  const flow = useReactFlow<BoardFlowNode, Edge>();
   const canvasEl = useRef<HTMLDivElement>(null);
-  const pendingPositions = useRef(new Map<string, number>());
-  const [nodes, setNodes] = useState<EntityFlowNode[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [selection, setSelection] = useState<BoardSelection | null>(null);
   const [viewport, setViewport] = useState<Viewport>(state.viewport);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const context = useBrainstormContext(state, services, version, contextRequest, contextHandled);
+  const { nodes, changeNodes } = useBoardNodes(
+    state,
+    version,
+    services,
+    commands.openFocus,
+    context.rootId,
+    report,
+  );
   const canCreate = services.workspaces
     .getAvailableEntityTypes(state.workspaceId, services.types)
     .some((type) => type.id === 'idea');
 
   useEffect(() => {
     const projection = projectBoard(state, services.index);
-    setNodes((previous) =>
-      entityNodes(projection.entities, services, commands.openFocus).map((node) => {
-        const existing = previous.find((candidate) => candidate.id === node.id);
-        if (!existing) {
-          return node;
-        }
-        const moving = existing.dragging || pendingPositions.current.has(node.id);
-        return {
-          ...node,
-          // Domain refreshes must retain React Flow's local size measurement.
-          // Otherwise restored cards can stay hidden until another resize event.
-          measured: existing.measured,
-          selected: existing.selected,
-          dragging: existing.dragging,
-          position: moving ? existing.position : node.position,
-        };
-      }),
-    );
     setEdges((previous) =>
       relationEdges(projection.relationships, services).map((edge) => ({
         ...edge,
@@ -89,12 +86,16 @@ export function BrainstormCanvas({
     );
   }, [state, version, services, commands.openFocus]);
 
-  const select = useCallback(({ nodes, edges }: { nodes: EntityFlowNode[]; edges: Edge[] }) => {
-    const node = nodes[0];
+  const select = useCallback(({ nodes, edges }: { nodes: BoardFlowNode[]; edges: Edge[] }) => {
+    setSelectedIds((current) => {
+      const next = nodes.filter((node) => node.type === 'entity').map((node) => node.id);
+      return current.join(',') === next.join(',') ? current : next;
+    });
+    const node = nodes.length === 1 ? nodes[0] : undefined;
     const edge = edges[0];
     let next: BoardSelection | null = null;
     if (node) {
-      next = { kind: 'node', id: node.id };
+      next = { kind: node.type === 'boardGroup' ? 'group' : 'node', id: node.id };
     } else if (edge) {
       next = { kind: 'edge', id: edge.id };
     }
@@ -105,37 +106,6 @@ export function BrainstormCanvas({
 
   function report(failure: unknown): void {
     setError(failure instanceof Error ? failure.message : 'Could not save the board layout.');
-  }
-
-  function changeNodes(changes: NodeChange<EntityFlowNode>[]): void {
-    setNodes((current) => applyNodeChanges(changes, current));
-    for (const change of changes) {
-      // React Flow emits settled positions for both drag release and arrow-key moves.
-      // Intermediate dragging positions stay entirely in this component.
-      if (change.type !== 'position' || change.dragging !== false || !change.position) {
-        continue;
-      }
-      pendingPositions.current.set(change.id, (pendingPositions.current.get(change.id) ?? 0) + 1);
-      void services.boards
-        .moveEntity(state.workspaceId, change.id, change.position)
-        .catch((failure: unknown) => {
-          report(failure);
-          const saved = services.boards.getBoard(state.workspaceId).nodes[change.id];
-          if (saved && pendingPositions.current.get(change.id) === 1) {
-            setNodes((current) =>
-              current.map((node) => (node.id === change.id ? { ...node, position: saved } : node)),
-            );
-          }
-        })
-        .finally(() => {
-          const remaining = (pendingPositions.current.get(change.id) ?? 1) - 1;
-          if (remaining > 0) {
-            pendingPositions.current.set(change.id, remaining);
-          } else {
-            pendingPositions.current.delete(change.id);
-          }
-        });
-    }
   }
 
   function placementAtCenter() {
@@ -161,6 +131,12 @@ export function BrainstormCanvas({
   }
 
   function openFocusedEntity(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && context.rootId && !document.querySelector('.modal-container')) {
+      event.preventDefault();
+      event.stopPropagation();
+      context.exitContext();
+      return;
+    }
     if (event.key !== 'Enter' || !(event.target instanceof Element)) {
       return;
     }
@@ -169,7 +145,7 @@ export function BrainstormCanvas({
       return;
     }
     const id = node.dataset.id;
-    if (id) {
+    if (id && state.nodes[id]) {
       event.preventDefault();
       event.stopPropagation();
       commands.openFocus(id);
@@ -178,6 +154,13 @@ export function BrainstormCanvas({
 
   function removeSelected(): void {
     if (!selection) {
+      return;
+    }
+    if (selection.kind === 'group') {
+      void services.boards
+        .removeGroup(state.workspaceId, selection.id)
+        .then(() => setSelection(null))
+        .catch(report);
       return;
     }
     if (selection.kind === 'node') {
@@ -196,13 +179,47 @@ export function BrainstormCanvas({
   }
 
   return (
-    <>
+    <div className="tc-board-body" onKeyDownCapture={openFocusedEntity}>
+      {context.root && (
+        <BrainstormContext
+          title={context.root.title}
+          typeLabel={services.types.label(context.root.type)}
+          exit={context.exitContext}
+        />
+      )}
       <BrainstormToolbar
+        canFitGroup={Boolean(
+          state.groups.find((group) => group.id === selection?.id)?.entityIds.length,
+        )}
+        contextActive={Boolean(context.root)}
+        selectedCount={selectedIds.length}
+        canGroup={selectedIds.length >= 2 && selectedIds.every((id) => !groupForEntity(state, id))}
+        hasGroups={state.groups.length > 0}
+        hasMembership={selectedIds.some((id) => groupForEntity(state, id))}
+        brainstormAround={() => {
+          if (selection?.kind === 'node') context.enterContext(selection.id);
+        }}
+        groupSelection={() => commands.createGroup(state.workspaceId, selectedIds)}
+        moveToGroup={() => commands.moveToGroup(state.workspaceId, selectedIds)}
+        removeFromGroup={() => {
+          void services.boards.assignGroup(state.workspaceId, selectedIds, null).catch(report);
+        }}
+        renameGroup={() => {
+          if (selection?.kind === 'group') commands.renameGroup(state.workspaceId, selection.id);
+        }}
+        fitGroup={() => {
+          if (selection?.kind === 'group')
+            void services.boards.fitGroup(state.workspaceId, selection.id).catch(report);
+        }}
         ready={ready && services.index.isReady()}
         canCreate={canCreate}
         selected={selection}
         zoom={viewport.zoom}
-        create={() => commands.createIdea(state.workspaceId, placementAtCenter())}
+        create={() =>
+          context.root
+            ? commands.createConnected(context.root.id)
+            : commands.createIdea(state.workspaceId, placementAtCenter())
+        }
         addExisting={() => commands.addExisting(state.workspaceId, placementAtCenter())}
         fit={() => {
           void flow.fitView({ padding: 0.25, duration: 0, minZoom: BOARD_MIN_ZOOM, maxZoom: 1 });
@@ -230,8 +247,8 @@ export function BrainstormCanvas({
           {error}
         </div>
       )}
-      <div className="tc-board-canvas" ref={canvasEl} onKeyDownCapture={openFocusedEntity}>
-        <ReactFlow<EntityFlowNode, Edge>
+      <div className="tc-board-canvas" ref={canvasEl}>
+        <ReactFlow<BoardFlowNode, Edge>
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
@@ -241,7 +258,9 @@ export function BrainstormCanvas({
             setEdges((current) => applyEdgeChanges(changes, current))
           }
           onSelectionChange={select}
-          onNodeDoubleClick={(_event, node) => commands.openFocus(node.id)}
+          onNodeDoubleClick={(_event, node) => {
+            if (node.type === 'entity') commands.openFocus(node.id);
+          }}
           onInit={() => setReady(true)}
           defaultViewport={state.viewport}
           onMoveEnd={finishViewport}
@@ -268,8 +287,8 @@ export function BrainstormCanvas({
             ).length > 0
           }
           deleteKeyCode={null}
-          multiSelectionKeyCode={null}
-          selectionKeyCode={null}
+          multiSelectionKeyCode={['Meta', 'Control']}
+          selectionKeyCode="Shift"
           edgesReconnectable={false}
           zoomOnDoubleClick={false}
           ariaLabelConfig={ariaLabels}
@@ -300,9 +319,9 @@ export function BrainstormCanvas({
         )}
       </div>
       <p className="tc-board-hint">
-        Drag cards to arrange · Drag the canvas to pan · Scroll to zoom · Connect using handles or
-        the selected card’s Connect action
+        Drag cards to arrange · Drag the canvas to pan · Scroll to zoom · Ctrl/Cmd-click or
+        Shift-drag to select cards · Connect using handles or Connect…
       </p>
-    </>
+    </div>
   );
 }

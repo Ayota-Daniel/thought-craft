@@ -1,3 +1,5 @@
+import type { BoardGroup } from './board-group';
+
 export interface BoardPosition {
   readonly x: number;
   readonly y: number;
@@ -12,6 +14,7 @@ export interface WorkspaceBoardState {
   readonly workspaceId: string;
   readonly nodes: Readonly<Record<string, BoardPosition>>;
   readonly viewport: BoardViewport;
+  readonly groups: readonly BoardGroup[];
 }
 
 export const BOARD_MIN_ZOOM = 0.35;

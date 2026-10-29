@@ -1,3 +1,4 @@
+import { prepareBrainstormContext } from './application/contextual-brainstorm';
 import { WorkspaceBoardStore } from './application/workspace-board-store';
 import { nextBoardPosition } from './domain/board';
 import { BrainstormView, BRAINSTORM_VIEW_TYPE } from './ui/brainstorm/brainstorm-view';
@@ -89,6 +90,9 @@ export default class ThoughtCraftPlugin extends Plugin {
     }
     await this.saveConfiguration({
       ...this.settings,
+      ...(isRecord(data) && data.boards !== undefined
+        ? { boards: [...this.boards.getSavedBoards(), ...this.boards.unreadableBoards] }
+        : {}),
       workspaces: [...this.workspaces.getAll(), ...this.workspaces.unreadableDefinitions],
       activeWorkspaceId: this.workspaces.getActive().id,
       entityTypes: [...this.registry.getAll(), ...this.registry.unreadableDefinitions],
@@ -152,6 +156,9 @@ export default class ThoughtCraftPlugin extends Plugin {
         this.boards,
         (id) => {
           void this.openInBrainstorm(id);
+        },
+        (id) => {
+          void this.brainstormAround(id);
         },
       );
       this.register(() => view.disposeFocus());
@@ -320,13 +327,13 @@ export default class ThoughtCraftPlugin extends Plugin {
       .then(async () => {
         const raw: unknown = await this.loadData();
         const existing = isRecord(raw) ? raw : {};
-        if (typeof existing.configVersion === 'number' && existing.configVersion > 5) {
+        if (typeof existing.configVersion === 'number' && existing.configVersion > 6) {
           throw new Error('This configuration was created by a newer Thought Craft version.');
         }
         const next = {
           ...existing,
           ...(typeof changes === 'function' ? changes(existing) : changes),
-          configVersion: 5,
+          configVersion: 6,
         };
         await this.saveData(next);
         this.settings = settingsFromData(next);
@@ -353,6 +360,23 @@ export default class ThoughtCraftPlugin extends Plugin {
       },
     );
     this.captureModal.open();
+  }
+
+  private async brainstormAround(entityId: string): Promise<void> {
+    try {
+      await prepareBrainstormContext(entityId, {
+        index: this.entityIndex,
+        boards: this.boards,
+        workspaces: this.workspaces,
+      });
+      await this.showBrainstorm();
+      const view = this.app.workspace.getLeavesOfType(BRAINSTORM_VIEW_TYPE)[0]?.view;
+      if (view instanceof BrainstormView) {
+        view.enterContext(entityId);
+      }
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : 'Could not open contextual Brainstorm.');
+    }
   }
 
   private async openInBrainstorm(entityId: string): Promise<void> {

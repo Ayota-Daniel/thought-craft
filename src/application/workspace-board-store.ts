@@ -1,3 +1,14 @@
+import { parseBoardGroups } from './board-group-config';
+import {
+  createGroup,
+  renameGroup,
+  moveGroup,
+  assignGroup,
+  removeGroup,
+  cleanGroupMembers,
+} from './board-groups';
+import type { BoardGroup } from '../domain/board-group';
+import { cardIsOutside, groupBounds, validateGroup } from '../domain/board-group';
 import {
   validateBoardPosition,
   validateBoardViewport,
@@ -20,6 +31,14 @@ function freezeBoard(board: WorkspaceBoardState): WorkspaceBoardState {
   return Object.freeze({
     workspaceId: board.workspaceId,
     nodes: Object.freeze(nodes),
+    groups: Object.freeze(
+      board.groups.map((group) =>
+        Object.freeze({
+          ...group,
+          entityIds: Object.freeze([...group.entityIds]),
+        }),
+      ),
+    ),
     viewport: Object.freeze({
       x: board.viewport.x,
       y: board.viewport.y,
@@ -52,7 +71,8 @@ function parseBoard(raw: unknown): WorkspaceBoardState {
     }
     nodes[id.toLowerCase()] = { x: position.x, y: position.y };
   }
-  return freezeBoard({ workspaceId: raw.workspaceId, nodes, viewport });
+  const groups = parseBoardGroups(raw.groups, nodes);
+  return freezeBoard({ workspaceId: raw.workspaceId, nodes, viewport, groups });
 }
 
 export class WorkspaceBoardStore {
@@ -97,7 +117,12 @@ export class WorkspaceBoardStore {
     }
     let empty = this.emptyBoards.get(workspaceId);
     if (!empty) {
-      empty = freezeBoard({ workspaceId, nodes: {}, viewport: { x: 0, y: 0, zoom: 1 } });
+      empty = freezeBoard({
+        workspaceId,
+        nodes: {},
+        groups: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      });
       this.emptyBoards.set(workspaceId, empty);
     }
     return empty;
@@ -111,7 +136,12 @@ export class WorkspaceBoardStore {
     return () => this.listeners.delete(listener);
   };
 
-  addEntity(workspaceId: string, entityId: string, position: BoardPosition): Promise<void> {
+  addEntity(
+    workspaceId: string,
+    entityId: string,
+    position: BoardPosition,
+    groupId?: string,
+  ): Promise<void> {
     return this.update(workspaceId, (board) => {
       const entity = this.index.getById(entityId);
       if (!entity || entity.workspaceId !== workspaceId) {
@@ -121,7 +151,8 @@ export class WorkspaceBoardStore {
         throw new Error('This entity is already on the board.');
       }
       validateBoardPosition(position);
-      return { ...board, nodes: { ...board.nodes, [entityId]: position } };
+      const next = { ...board, nodes: { ...board.nodes, [entityId]: position } };
+      return groupId ? assignGroup(next, [entityId], groupId) : next;
     });
   }
 
@@ -132,7 +163,7 @@ export class WorkspaceBoardStore {
       }
       const nodes = { ...board.nodes };
       delete nodes[entityId];
-      return { ...board, nodes };
+      return cleanGroupMembers({ ...board, nodes });
     });
   }
 
@@ -145,7 +176,53 @@ export class WorkspaceBoardStore {
       if (board.nodes[entityId]?.x === position.x && board.nodes[entityId]?.y === position.y) {
         return board;
       }
-      return { ...board, nodes: { ...board.nodes, [entityId]: position } };
+      return {
+        ...board,
+        nodes: { ...board.nodes, [entityId]: position },
+        groups: board.groups.map((group) => {
+          if (!group.entityIds.includes(entityId) || !cardIsOutside(group, position)) {
+            return group;
+          }
+          return { ...group, entityIds: group.entityIds.filter((id) => id !== entityId) };
+        }),
+      };
+    });
+  }
+
+  createGroup(workspaceId: string, entityIds: readonly string[], label: string): Promise<void> {
+    return this.update(workspaceId, (board) => createGroup(board, entityIds, label));
+  }
+
+  renameGroup(workspaceId: string, groupId: string, label: string): Promise<void> {
+    return this.update(workspaceId, (board) => renameGroup(board, groupId, label));
+  }
+
+  moveGroup(workspaceId: string, groupId: string, position: BoardPosition): Promise<void> {
+    return this.update(workspaceId, (board) => moveGroup(board, groupId, position));
+  }
+
+  assignGroup(
+    workspaceId: string,
+    entityIds: readonly string[],
+    groupId: string | null,
+  ): Promise<void> {
+    return this.update(workspaceId, (board) => assignGroup(board, entityIds, groupId));
+  }
+
+  removeGroup(workspaceId: string, groupId: string): Promise<void> {
+    return this.update(workspaceId, (board) => removeGroup(board, groupId));
+  }
+
+  fitGroup(workspaceId: string, groupId: string): Promise<void> {
+    return this.update(workspaceId, (board) => {
+      const group = board.groups.find((candidate) => candidate.id === groupId);
+      if (!group) {
+        throw new Error('This group is no longer available.');
+      }
+      const bounds = groupBounds(board.nodes, group.entityIds);
+      const next: BoardGroup = { ...group, ...bounds };
+      validateGroup(next);
+      return { ...board, groups: board.groups.map((item) => (item.id === groupId ? next : item)) };
     });
   }
 
@@ -177,7 +254,7 @@ export class WorkspaceBoardStore {
           return board;
         }
         changed = true;
-        return freezeBoard({ ...board, nodes });
+        return freezeBoard(cleanGroupMembers({ ...board, nodes }));
       });
       return changed ? boards : undefined;
     });

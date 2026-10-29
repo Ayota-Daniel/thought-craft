@@ -387,7 +387,7 @@ try {
   assert.equal(await readFile(join(vault, 'Old M3 idea.md'), 'utf8'), oldBytes);
   assert.ok((await creationChoices(oldId)).includes('quest'));
   const migrated = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
-  assert.equal(migrated.configVersion, 5);
+  assert.equal(migrated.configVersion, 6);
   assert.equal(migrated.workspaces.filter((workspace) => workspace.id === 'default').length, 1);
   assert.equal(
     migrated.entityTypes.find((type) => type.id === 'quest').properties[0].key,

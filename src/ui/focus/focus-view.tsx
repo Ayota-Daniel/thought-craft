@@ -35,6 +35,7 @@ export class FocusView extends ItemView {
   private workspaceLabelEl: HTMLElement | null = null;
   private unsubscribeBoards: (() => void) | null = null;
   private boardButtonEl: HTMLButtonElement | null = null;
+  private contextButtonEl: HTMLButtonElement | null = null;
   private entityId: string | null = null;
   private headingEl: HTMLElement | null = null;
   private bodyEl: HTMLElement | null = null;
@@ -61,6 +62,7 @@ export class FocusView extends ItemView {
     private relationTypes: RelationTypeRegistry,
     private boards: WorkspaceBoardStore,
     private openInBoard: (entityId: string) => void,
+    private brainstormAround: (entityId: string) => void,
   ) {
     super(leaf);
   }
@@ -136,6 +138,16 @@ export class FocusView extends ItemView {
         this.openInBoard(this.entityId);
       }
     });
+    this.contextButtonEl = workspaceRow.createEl('button', {
+      text: 'Brainstorm around',
+      cls: 'tc-focus-context',
+      attr: { type: 'button' },
+    });
+    this.contextButtonEl.addEventListener('click', () => {
+      if (this.entityId) {
+        this.brainstormAround(this.entityId);
+      }
+    });
     this.headingEl = content.createEl('h1');
     this.bodyEl = content.createDiv({ cls: 'tc-focus-markdown' });
 
@@ -178,6 +190,7 @@ export class FocusView extends ItemView {
     this.unsubscribeBoards?.();
     this.unsubscribeBoards = null;
     this.boardButtonEl = null;
+    this.contextButtonEl = null;
     this.unsubscribeWorkspaces?.();
     this.unsubscribeWorkspaces = null;
     this.workspaceLabelEl = null;
@@ -215,6 +228,9 @@ export class FocusView extends ItemView {
       this.workspaceLabelEl?.setText('');
       if (this.boardButtonEl) {
         this.boardButtonEl.disabled = true;
+        if (this.contextButtonEl) {
+          this.contextButtonEl.disabled = true;
+        }
       }
       this.inspectorRoot.render(null);
       this.markdownComponent?.unload();
@@ -228,6 +244,9 @@ export class FocusView extends ItemView {
     if (this.boardButtonEl) {
       const workspace = this.workspaces.get(entity.workspaceId);
       this.boardButtonEl.disabled = !workspace || workspace.retired;
+      if (this.contextButtonEl) {
+        this.contextButtonEl.disabled = this.boardButtonEl.disabled;
+      }
       this.boardButtonEl.setText(
         this.boards.getBoard(entity.workspaceId).nodes[entity.id]
           ? 'Open in Brainstorm'

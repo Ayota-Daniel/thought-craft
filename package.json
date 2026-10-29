@@ -20,7 +20,8 @@
     "install:dev": "node scripts/install-dev.mjs",
     "test:obsidian:m3": "npm run build && node scripts/smoke-m3.mjs",
     "test:obsidian:m4": "npm run build && node scripts/smoke-m4.mjs",
-    "test:obsidian:m5": "npm run build && node scripts/smoke-m5.mjs"
+    "test:obsidian:m5": "npm run build && node scripts/smoke-m5.mjs",
+    "test:obsidian:m6": "npm run build && node scripts/smoke-m6.mjs"
   },
   "engines": {
     "node": ">=22"

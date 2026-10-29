@@ -968,3 +968,103 @@ button.tc-property-remove:hover {
 .tc-brainstorm .react-flow__attribution a {
   color: var(--text-faint);
 }
+
+/* M6 adds hierarchy to the existing board rather than a second editor. */
+.tc-board-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.tc-board-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.tc-board-context > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  min-width: 0;
+}
+
+.tc-board-context span {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.tc-board-context strong {
+  overflow-wrap: anywhere;
+  font-weight: var(--font-medium);
+}
+
+.tc-board-canvas .tc-context-root .tc-entity-node {
+  border-color: var(--interactive-accent);
+  border-width: 2px;
+}
+
+.tc-board-canvas .tc-context-quiet {
+  opacity: 0.55;
+}
+
+.tc-board-canvas .tc-context-quiet:focus-within,
+.tc-board-canvas .tc-context-quiet:hover,
+.tc-board-canvas .tc-context-quiet.selected {
+  opacity: 1;
+}
+
+.tc-board-group {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--background-modifier-border-hover);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-secondary) 35%, transparent);
+  pointer-events: none;
+}
+
+.tc-board-group-title {
+  pointer-events: auto;
+  cursor: grab;
+  padding: 12px 20px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-medium);
+  line-height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tc-board-group-title:active {
+  cursor: grabbing;
+}
+
+.tc-board-canvas .react-flow__node-boardGroup {
+  pointer-events: none;
+}
+
+.tc-board-canvas .react-flow__node-boardGroup.selected .tc-board-group,
+.tc-board-canvas .react-flow__node-boardGroup:focus-visible .tc-board-group {
+  border-color: var(--interactive-accent);
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+.tc-focus-workspace-row button.tc-focus-context {
+  border-color: var(--interactive-accent);
+  color: var(--text-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tc-board-canvas .react-flow__node-entity {
+    transition: opacity 120ms ease;
+  }
+}

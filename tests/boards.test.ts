@@ -40,6 +40,7 @@ describe('board visual state', () => {
     expect(boards.getBoard('default')).toEqual({
       workspaceId: 'default',
       nodes: {},
+      groups: [],
       viewport: { x: 0, y: 0, zoom: 1 },
     });
     expect(boards.getBoard('default')).toBe(boards.getBoard('default'));
@@ -55,6 +56,7 @@ describe('board visual state', () => {
       {
         workspaceId: 'default',
         nodes: { [source.id]: position },
+        groups: [],
         viewport: { x: 30, y: -70, zoom: 0.75 },
       },
     ]);
@@ -192,6 +194,7 @@ describe('board visual state', () => {
   it('finds a clear nearby slot even when several first offsets are occupied', () => {
     const board: WorkspaceBoardState = {
       workspaceId: 'default',
+      groups: [],
       nodes: {
         one: { x: 100, y: 100 },
         two: { x: 550, y: 100 },
@@ -409,7 +412,7 @@ describe('board actions and configuration migration', () => {
       activeWorkspaceId: 'default',
     });
     expect(m4).toEqual(original);
-    expect(() => migrateWorkspaces({ configVersion: 6 }, [])).toThrow('newer');
+    expect(() => migrateWorkspaces({ configVersion: 7 }, [])).toThrow('newer');
     expect(
       migrateWorkspaces({ configVersion: 5, defaultWorkspace: 'obsolete' }, ['idea'])
         .activeWorkspaceId,

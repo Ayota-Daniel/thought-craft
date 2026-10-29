@@ -24,5 +24,9 @@ export interface BoardCommands {
   createIdea: (workspaceId: string, position: BoardPosition) => void;
   addExisting: (workspaceId: string, position: BoardPosition) => void;
   connect: (workspaceId: string, sourceId: string, targetId: string) => void;
+  createConnected: (rootId: string) => void;
+  createGroup: (workspaceId: string, entityIds: readonly string[]) => void;
+  renameGroup: (workspaceId: string, groupId: string) => void;
+  moveToGroup: (workspaceId: string, entityIds: readonly string[]) => void;
   removeRelationship: (sourceId: string, relation: EntityRelation) => void;
 }

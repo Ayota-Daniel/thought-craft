@@ -1,3 +1,5 @@
+import { ContextualCreateDialog } from './contextual-create-dialog';
+import { GroupDialog } from './group-dialog';
 import { ItemView, Modal, type WorkspaceLeaf } from 'obsidian';
 import { createRoot, type Root } from 'react-dom/client';
 import { createBoardIdea, availableBoardRelations } from '../../application/board-actions';
@@ -18,6 +20,7 @@ export class BrainstormView extends ItemView {
   private disposed = false;
   private dialog: Modal | null = null;
   private commands: BoardCommands;
+  private contextRequest: { entityId: string; sequence: number } | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -36,6 +39,49 @@ export class BrainstormView extends ItemView {
         this.showDialog(
           new BoardRelationPicker(this.app, workspaceId, sourceId, targetId, services, () =>
             this.clearDialog(),
+          ),
+        ),
+      createConnected: (rootId) =>
+        this.showDialog(
+          new ContextualCreateDialog(this.app, rootId, services, () => this.clearDialog()),
+        ),
+      createGroup: (workspaceId, ids) =>
+        this.showDialog(
+          new GroupDialog(
+            this.app,
+            'Group selected entities',
+            '',
+            (label) => services.boards.createGroup(workspaceId, ids, label),
+            () => this.clearDialog(),
+          ),
+        ),
+      renameGroup: (workspaceId, groupId) => {
+        const group = services.boards
+          .getBoard(workspaceId)
+          .groups.find((item) => item.id === groupId);
+        if (group) {
+          this.showDialog(
+            new GroupDialog(
+              this.app,
+              'Rename group',
+              group.label,
+              (label) => services.boards.renameGroup(workspaceId, groupId, label),
+              () => this.clearDialog(),
+            ),
+          );
+        }
+      },
+      moveToGroup: (workspaceId, ids) =>
+        this.showDialog(
+          new GroupDialog(
+            this.app,
+            'Move to group',
+            '',
+            (id) => services.boards.assignGroup(workspaceId, ids, id),
+            () => this.clearDialog(),
+            services.boards
+              .getBoard(workspaceId)
+              .groups.map((group) => ({ id: group.id, label: group.label })),
           ),
         ),
       removeRelationship: (sourceId, relation) => this.removeRelationship(sourceId, relation),
@@ -63,14 +109,24 @@ export class BrainstormView extends ItemView {
         return;
       }
       this.root = createRoot(this.contentEl);
-      this.root.render(
-        <BrainstormApp
-          services={this.services}
-          commands={this.commands}
-          connectSelected={(workspaceId, entityId) => this.connectSelected(workspaceId, entityId)}
-        />,
-      );
+      this.renderBoard();
     });
+  }
+
+  enterContext(entityId: string): void {
+    this.contextRequest = { entityId, sequence: (this.contextRequest?.sequence ?? 0) + 1 };
+    this.renderBoard();
+  }
+
+  private renderBoard(): void {
+    this.root?.render(
+      <BrainstormApp
+        services={this.services}
+        commands={this.commands}
+        contextRequest={this.contextRequest}
+        connectSelected={(workspaceId, entityId) => this.connectSelected(workspaceId, entityId)}
+      />,
+    );
   }
 
   async onClose(): Promise<void> {
@@ -78,6 +134,7 @@ export class BrainstormView extends ItemView {
   }
   disposeBoard(): void {
     this.disposed = true;
+    this.contextRequest = null;
     this.dialog?.close();
     this.dialog = null;
     this.root?.unmount();

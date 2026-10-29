@@ -603,7 +603,7 @@ try {
   const configPath = join(pluginFolder, 'data.json');
   const savedConfig = await readFile(configPath, 'utf8');
   const config = JSON.parse(savedConfig);
-  assert.equal(config.configVersion, 5);
+  assert.equal(config.configVersion, 6);
   assert.equal(config.entityTypes.filter((type) => type.id === 'quest').length, 1);
   assert.equal(config.entities, undefined);
   assert.equal(config.bs_schema_values, undefined);

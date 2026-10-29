@@ -1,4 +1,4 @@
-# Thought Craft architecture at M5
+# Thought Craft architecture at M6
 
 ## Separate responsibilities
 
@@ -8,7 +8,7 @@
 | `EntityTypeRegistry` | Global Entity Type definitions and reusable Property Schemas |
 | `WorkspaceRegistry` | Workspace definitions, enabled type IDs, custom relation definitions and persisted active context |
 | `RelationTypeRegistry` | Resolution and validation of universal and source-Workspace custom relations |
-| `WorkspaceBoardStore` | Lazy per-Workspace UUID positions and viewport, with no copied Entity/edge data |
+| `WorkspaceBoardStore` | Lazy per-Workspace UUID positions, groups and viewport, with no copied Entity/edge data |
 | `ObsidianEntityRepository` | Real Vault/FileManager reads, writes and external synchronization |
 
 These services are injected explicitly. React sends intents to the registries/repository rather than mutating raw settings. No Redux, global singleton, per-domain subclass or specialized Novel/Product engine is introduced. There is no new database, reverse-edge store or path-to-ID map.
@@ -25,7 +25,7 @@ These services are injected explicitly. React sends intents to the registries/re
 
 ## Configuration and migration
 
-`data.json` contains `configVersion: 5`, the existing capture folder/legacy default-workspace setting, global `entityTypes`, `workspaces`, and `activeWorkspaceId`, plus optional lazy `boards` visual state. Entity values/content/relations are never stored there.
+`data.json` contains `configVersion: 6`, the existing capture folder/legacy default-workspace setting, global `entityTypes`, `workspaces`, and `activeWorkspaceId`, plus optional lazy `boards` visual state. Entity values/content/relations are never stored there.
 
 Initialization loads global types, then performs the pure Workspace migration, constructs Workspace and relation services, and persists the migrated configuration before registering UI/rebuilding the vault index. M3 custom types/property schemas and unrelated configuration are retained. Missing `default` is seeded once with all types currently active at migration time, preserving prior creation availability. Subsequent global type creation does not automatically enable that type in existing Workspaces.
 
@@ -105,4 +105,25 @@ Visual connections open a native relation-kind picker. Choices come from the sam
 
 Selecting an edge exposes Remove relationship with confirmation, invoking the existing expected-relation removal path. Removing a card invokes only BoardStore.removeEntity: it cannot delete/archive an entity, edit values or remove relations. External rename/body/property/relation/schema changes update projections by UUID; Focus remains the detailed editor/native-note gateway.
 
-M5 is limited to one curated board per Workspace. Named/nested boards, grouping, auto-layout, Parking Lot, drawing tools, specialized Story/Plot views, timelines, evaluations and formulas remain deferred. Keyboard support provides meaningful alternatives but is not a claim of complete assistive-technology coverage. **M6 has not been started.**
+M5 is limited to one curated board per Workspace. M5 deferred grouping; M6 adds the visual groups described below. Named/nested boards, auto-layout, Parking Lot, drawing tools, specialized Story/Plot views, timelines, evaluations and formulas remain deferred. Keyboard support provides meaningful alternatives but is not a claim of complete assistive-technology coverage. **M7 has not been started.**
+
+
+## M6: temporary contextual brainstorming
+
+`application/contextual-brainstorm.ts` prepares a root using its actual Workspace: validate availability, place UUID if needed, preserve existing coordinates, set active Workspace, then open the native board. The ItemView sends a transient context request to the canvas. Requests are consumed once, so switching away/back does not resurrect an old context. `brainstorm-context.tsx` keeps `rootId` and pending centering locally; nothing enters plugin configuration, Markdown or Obsidian’s restored view state. Deleted/moved/off-board roots clear context after index readiness. Removing a group does not clear it.
+
+The context hook centers using measured card dimensions after node initialization and after the context row’s ResizeObserver has settled. Centering is instantaneous, respects reduced motion and saves only the resulting normal viewport. Direct neighbors use existing outgoing and incoming queries. The adapter marks root, neighbor and unrelated cards; no entities are automatically placed and no second relation model exists. Exit/Escape leaves durable layout alone; modal Escape has priority. Focus and the selected-card toolbar expose the action through native buttons.
+
+`connectedIdeaRelations()` validates a prospective Idea source against the real root using RelationTypeRegistry/domain rules. `createConnectedIdea()` generates actual entity/relation UUIDs, validates creation and new→root direction, then calls `createEntity()` with one initial relation. The existing repository independently rechecks current definitions/targets at its normal creation commit. No mirrored/root mutation occurs. The explicit dialog defaults to related-to, filters incompatible kinds and rechecks stale options at submission. New placement uses the existing deterministic nearby slot search relative to the current root and inherits its current group. Membership/position/group are saved in one board update. A layout failure after successful Markdown creation has a typed recovery error; the dialog prevents repeat creation and provides the real file path.
+
+## M6: independent group state and adapter
+
+`BoardGroup` stores `id`, `label`, `x/y`, `width/height`, and `entityIds`. IDs have a `group-` namespace separate from entity identity. Groups are visual zones only: no entity type, note, schema, relation or Focus. `WorkspaceBoardState.groups` is always present in canonical state. Parsing supplies an empty list for M5; v6 initialization persists that normalized visual state only when saved boards already exist. UUID positions/viewport, definitions and unrelated configuration are preserved with no Markdown migration. Malformed group data retains its entire raw layout for recovery rather than guessing membership.
+
+Pure group operations live in `application/board-groups.ts` and geometry in `domain/board-group.ts`. Creation requires at least two current ungrouped entities. An entity belongs to at most one group. Explicit transfer removes its former membership, then expands the destination boundary to include members without moving/rescaling cards. Moving a card clearly outside its group removes membership; visual overlap never creates membership. Empty groups persist. Removal/deletion/membership changes prune only stale UUID membership, after existing readiness guards. Removing a group preserves all absolute card positions, Markdown and relations.
+
+The UI deliberately uses independent top-level XYFlow zone nodes instead of parented children. Both zones and entities therefore use the same absolute board coordinates, with no absolute/relative conversions or persisted `parentId`/`extent`. `group-adapter.ts` maps zones and previews translation; the title is the only pointer drag surface. Groups have no handles; connections remain entity-only. `use-board-nodes.ts` retains measurements, local drags and pending positions while subscriptions refresh domain data. A group move previews members once even if the selection includes both group and children, then BoardStore commits boundary plus member positions atomically after release/settled keyboard motion. Failure restores saved positions. No persistence during mousemove.
+
+Selected group actions use small native forms and buttons: rename, fit bounds to current members, remove boundary. Freeform resizing is deferred to avoid introducing resize chrome and conflicting membership semantics; Fit provides predictable bounds without scaling entities. Ctrl/Cmd multi-selection and Shift selection use XYFlow; group creation is not offered for already grouped selections. Group, context and form styling reuse host tokens and visible focus; opacity transitions disable under reduced motion.
+
+EntityIndex, WorkspaceRegistry, EntityTypeRegistry and RelationTypeRegistry are unchanged in M6. Incoming context lookup remains a scan; neighbors resolve once per board/domain/context refresh, not on drag ticks. No concrete issue appeared at validation scale; no large-vault benchmark or reverse-index optimization is claimed. Groups are isolated per Workspace and preserved through retirement. Full assistive-technology/mobile/other-platform coverage remains unvalidated. Related-entity discovery, arbitrary group styling, nested groups, dedicated Parking Lot, freeform resizing, auto-layout, specialized Story/Plot views and all M7 work remain deferred.

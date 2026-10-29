@@ -1,9 +1,21 @@
 export interface BoardSelection {
-  kind: 'node' | 'edge';
+  kind: 'node' | 'edge' | 'group';
   id: string;
 }
 
 interface BoardToolbarProps {
+  contextActive: boolean;
+  selectedCount: number;
+  canGroup: boolean;
+  hasGroups: boolean;
+  hasMembership: boolean;
+  brainstormAround: () => void;
+  groupSelection: () => void;
+  moveToGroup: () => void;
+  removeFromGroup: () => void;
+  renameGroup: () => void;
+  fitGroup: () => void;
+  canFitGroup: boolean;
   canCreate: boolean;
   ready: boolean;
   selected: BoardSelection | null;
@@ -32,7 +44,7 @@ export function BrainstormToolbar(props: BoardToolbarProps) {
           }
           onClick={props.create}
         >
-          + Idea
+          {props.contextActive ? '+ Connected idea' : '+ Idea'}
         </button>
         <button disabled={!props.ready} onClick={props.addExisting}>
           + Add existing
@@ -42,8 +54,32 @@ export function BrainstormToolbar(props: BoardToolbarProps) {
         {props.selected?.kind === 'node' && (
           <>
             <button onClick={props.openSelected}>Open entity</button>
+            <button onClick={props.brainstormAround}>Brainstorm around</button>
             <button onClick={props.connectSelected}>Connect…</button>
             <button onClick={props.removeSelected}>Remove from board</button>
+          </>
+        )}
+        {props.selectedCount >= 2 && props.canGroup && (
+          <button onClick={props.groupSelection}>Group selection</button>
+        )}
+        {props.selectedCount > 0 && props.hasGroups && (
+          <button onClick={props.moveToGroup}>Move to group…</button>
+        )}
+        {props.selectedCount > 0 && props.hasMembership && (
+          <button onClick={props.removeFromGroup}>Remove from group</button>
+        )}
+        {props.selected?.kind === 'group' && (
+          <>
+            <button onClick={props.renameGroup}>Rename group</button>
+            <button disabled={!props.canFitGroup} onClick={props.fitGroup}>
+              Fit group to members
+            </button>
+            <button
+              title="Remove only the group boundary; keep every entity on the board"
+              onClick={props.removeSelected}
+            >
+              Remove group
+            </button>
           </>
         )}
         {props.selected?.kind === 'edge' && (

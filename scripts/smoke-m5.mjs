@@ -447,7 +447,7 @@ try {
   await activeBoard().getByRole('heading', { name: 'This board is empty.', exact: true }).waitFor();
   assert.equal(await activeBoard().locator('.react-flow__node').count(), 0);
   const migrated = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
-  assert.equal(migrated.configVersion, 5);
+  assert.equal(migrated.configVersion, 6);
   assert.equal(migrated.activeWorkspaceId, 'default');
   assert.equal(
     migrated.entityTypes.find((type) => type.id === 'quest').properties[0].key,
@@ -459,7 +459,7 @@ try {
   assert.equal(await readFile(join(vault, oldIdea.filePath), 'utf8'), oldBytes);
   await page.screenshot({ path: join(run, 'empty-board.png') });
   checks.push(
-    'M4 configuration upgrades to v5 without note/schema/Workspace/relation changes. Opening a curated empty board does not auto-place entities or eagerly persist layout.',
+    'M4 configuration upgrades to the current configuration version without note/schema/Workspace/relation changes. Opening a curated empty board does not auto-place entities or eagerly persist layout.',
   );
 
   const thought = await createIdeaOnBoard('The train has been here before');
@@ -767,7 +767,7 @@ try {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   const finalBoards = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8')).boards;
   for (const board of finalBoards) {
-    assert.deepEqual(Object.keys(board).sort(), ['nodes', 'viewport', 'workspaceId']);
+    assert.deepEqual(Object.keys(board).sort(), ['groups', 'nodes', 'viewport', 'workspaceId']);
     for (const point of Object.values(board.nodes)) {
       assert.deepEqual(Object.keys(point).sort(), ['x', 'y']);
     }
@@ -780,7 +780,7 @@ try {
   assert.equal((await savedBoard()).nodes[scene.id], undefined);
   assert.deepEqual(pluginErrors, []);
   checks.push(
-    'M3 custom types render through the generic card; retired/disabled types stay openable. Unknown type falls back safely. Light/dark, keyboard dialogs/cards, reduced motion and final restart pass; layout JSON contains only UUID positions and viewport.',
+    'M3 custom types render through the generic card; retired/disabled types stay openable. Unknown type falls back safely. Light/dark, keyboard dialogs/cards, reduced motion and final restart pass; layout JSON contains only UUID positions, empty groups and viewport.',
   );
 
   const report = {
