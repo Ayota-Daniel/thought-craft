@@ -24,6 +24,7 @@ export class InboxView extends ItemView {
     private openIdea: (id: string) => void,
     private boards: WorkspaceBoardStore,
     private writer: EntityTrashWriter,
+    private showStory: () => void,
   ) {
     super(leaf);
   }
@@ -66,6 +67,7 @@ export class InboxView extends ItemView {
         index={this.index}
         capture={this.capture}
         showBrainstorm={this.showBrainstorm}
+        showStory={this.showStory}
         open={this.openIdea}
       />,
     );

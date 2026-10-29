@@ -38,6 +38,8 @@ export const GUIDE_TOPICS = {
     'A Workspace scopes your current list and board. Switching Workspace does not move notes. Each Workspace enables entity types and may define custom relations.',
   Brainstorm:
     'Create an idea or use Add Existing to place notes. Rectangle-select cards, then drag any selected card to move the block. Groups persist spatial organization; selection is temporary. Brainstorm around enters Focus: roots plus direct neighbors. Show all restores every placed card. Handles or Connect create real relations; connected ideas link new idea → chosen root. Pan and zoom without changing card positions.',
+  Story:
+    'Enable Story under Specialized experiences in Manage workspaces; enable only the entity types you need. Overview offers Continue writing for the latest edited Scene and links to Scenes, Characters, Locations, Plot Threads and Ideas. Collections search titles and sort by dates or name, not narrative order. New Scenes and Continue writing open the real Markdown editor: Thoughtcraft organizes, Obsidian writes. Other creations open generic Focus with properties and relations; Back returns to your collection. Story shares the Workspace Brainstorm board. Disabling Story hides its tools and preserves every note. Plot Boards, Chapters and Timelines are not part of this foundation.',
   Relations:
     'Relationships are directed: A → kind → B. They are stored once on A; incoming links are derived. Removing a card or group does not remove relationships. Trashing a target leaves a readable unavailable link in the source.',
 } as const;

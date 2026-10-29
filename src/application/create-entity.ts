@@ -66,3 +66,25 @@ export async function createFrom(
     relations: [origin],
   });
 }
+
+/** Generic creation without a provenance source, used by specialized views. */
+export async function createEntity(
+  input: CreateFromInput,
+  workspaceId: string,
+  writer: EntityWriter,
+  registry: EntityTypeRegistry,
+  workspaces: WorkspaceRegistry,
+): Promise<Entity> {
+  workspaces.validateCreation(workspaceId, input.type, registry);
+  if (!input.title.trim()) {
+    throw new Error('Enter a title.');
+  }
+  return writer.createEntity({
+    ...input,
+    title: input.title.trim(),
+    id: globalThis.crypto.randomUUID(),
+    workspaceId,
+    createdAt: new Date().toISOString(),
+    relations: [],
+  });
+}

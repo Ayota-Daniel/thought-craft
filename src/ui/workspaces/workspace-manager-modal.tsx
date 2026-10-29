@@ -3,7 +3,10 @@ import { createRoot, type Root } from 'react-dom/client';
 import { useEffect, useState } from 'react';
 import type { WorkspaceRegistry } from '../../application/workspace-registry';
 import { typeIdForLabel, type EntityTypeRegistry } from '../../application/entity-type-registry';
-import type { WorkspaceRelationTypeDefinition } from '../../domain/workspace';
+import type {
+  WorkspaceExperienceId,
+  WorkspaceRelationTypeDefinition,
+} from '../../domain/workspace';
 
 export class WorkspaceManagerModal extends Modal {
   private root: Root | null = null;
@@ -252,6 +255,7 @@ interface WorkspaceFormInput {
   id: string;
   label: string;
   description: string;
+  enabledExperiences: readonly WorkspaceExperienceId[];
   enabledEntityTypeIds: readonly string[];
 }
 
@@ -272,6 +276,9 @@ function WorkspaceForm({
   const [id, setId] = useState(workspace?.id ?? '');
   const [customId, setCustomId] = useState(false);
   const [description, setDescription] = useState(workspace?.description ?? '');
+  const [experiences, setExperiences] = useState<readonly WorkspaceExperienceId[]>(
+    workspace?.enabledExperiences ?? [],
+  );
   const [enabled, setEnabled] = useState<readonly string[]>(
     workspace?.enabledEntityTypeIds ?? ['idea'],
   );
@@ -280,7 +287,13 @@ function WorkspaceForm({
       className="tc-property-form"
       onSubmit={(event) => {
         event.preventDefault();
-        void submit({ id, label, description, enabledEntityTypeIds: enabled });
+        void submit({
+          id,
+          label,
+          description,
+          enabledExperiences: experiences,
+          enabledEntityTypeIds: enabled,
+        });
       }}
     >
       {!workspace && <h2>Create workspace</h2>}
@@ -320,6 +333,20 @@ function WorkspaceForm({
           onChange={(event) => setDescription(event.target.value)}
         />
       </label>
+      <fieldset className="tc-type-choices">
+        <legend>Specialized experiences</legend>
+        <label>
+          <input
+            type="checkbox"
+            checked={experiences.includes('story')}
+            onChange={(event) => setExperiences(event.target.checked ? ['story'] : [])}
+          />
+          Story
+        </label>
+        <p className="tc-inspector-hint">
+          Organize writing material. Entity types are enabled separately below.
+        </p>
+      </fieldset>
       <TypeChoices
         types={types}
         selected={enabled}

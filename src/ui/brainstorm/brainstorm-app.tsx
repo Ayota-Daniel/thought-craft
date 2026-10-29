@@ -34,6 +34,7 @@ export function BrainstormApp({
           active="Brainstorm"
           inbox={commands.showInbox}
           brainstorm={() => undefined}
+          story={workspace.enabledExperiences.includes('story') ? commands.showStory : undefined}
         />
         <h1 className="tc-visually-hidden">Brainstorm · {workspace.label}</h1>
       </header>

@@ -26,7 +26,7 @@ export class BrainstormView extends ItemView {
   constructor(
     leaf: WorkspaceLeaf,
     private services: BoardServices,
-    navigation: Pick<BoardCommands, 'openFocus' | 'showInbox' | 'manageWorkspaces'>,
+    navigation: Pick<BoardCommands, 'openFocus' | 'showInbox' | 'showStory' | 'manageWorkspaces'>,
   ) {
     super(leaf);
     this.commands = {

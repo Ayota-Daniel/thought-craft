@@ -21,6 +21,7 @@ export interface BoardCommands {
   showControls: () => void;
   openFocus: (entityId: string) => void;
   showInbox: () => void;
+  showStory: () => void;
   manageWorkspaces: () => void;
   createIdea: (workspaceId: string, position: BoardPosition) => void;
   addExisting: (workspaceId: string, position: BoardPosition) => void;

@@ -1,3 +1,4 @@
+import { STORY_COLLECTIONS, storyEnabled, type StoryOrigin } from '../../application/story-query';
 import type { WorkspaceBoardStore } from '../../application/workspace-board-store';
 import type { WorkspaceRegistry } from '../../application/workspace-registry';
 import type { RelationTypeRegistry } from '../../application/relation-type-registry';
@@ -36,6 +37,9 @@ export class FocusView extends ItemView {
   private unsubscribeBoards: (() => void) | null = null;
   private boardButtonEl: HTMLButtonElement | null = null;
   private contextButtonEl: HTMLButtonElement | null = null;
+  private navigationOrigin: StoryOrigin | undefined;
+  private navigateBack: (() => void) | undefined;
+  private backLabel: HTMLElement | null = null;
   private entityId: string | null = null;
   private headingEl: HTMLElement | null = null;
   private bodyEl: HTMLElement | null = null;
@@ -65,6 +69,28 @@ export class FocusView extends ItemView {
     private brainstormAround: (entityId: string) => void,
   ) {
     super(leaf);
+  }
+
+  getNavigationOrigin(): StoryOrigin | undefined {
+    return this.navigationOrigin;
+  }
+
+  setNavigationOrigin(origin: StoryOrigin | undefined, back: () => void): void {
+    this.navigationOrigin = origin;
+    this.navigateBack = origin ? back : undefined;
+    this.updateBackLabel();
+  }
+
+  private updateBackLabel(): void {
+    const origin = this.navigationOrigin;
+    const workspace = origin ? this.workspaces.get(origin.workspaceId) : undefined;
+    if (!origin || !workspace || !storyEnabled(workspace)) {
+      this.backLabel?.setText('Back to inbox');
+      return;
+    }
+    const section =
+      STORY_COLLECTIONS.find((item) => item.id === origin.section)?.label ?? 'Overview';
+    this.backLabel?.setText(`Back to Story · ${section}`);
   }
 
   getViewType(): string {
@@ -101,8 +127,9 @@ export class FocusView extends ItemView {
     });
     const backIcon = backButton.createSpan({ attr: { 'aria-hidden': 'true' } });
     setIcon(backIcon, 'arrow-left');
-    backButton.createSpan({ text: 'Back to inbox' });
-    backButton.addEventListener('click', this.showInbox);
+    this.backLabel = backButton.createSpan({ text: 'Back to inbox' });
+    backButton.addEventListener('click', () => (this.navigateBack ?? this.showInbox)());
+    this.updateBackLabel();
 
     const actions = toolbar.createDiv({ cls: 'tc-focus-actions' });
     const createButton = actions.createEl('button', {
@@ -211,6 +238,7 @@ export class FocusView extends ItemView {
   }
 
   private async refreshEntity(): Promise<void> {
+    this.updateBackLabel();
     if (!this.headingEl || !this.bodyEl || !this.inspectorRoot) {
       return;
     }

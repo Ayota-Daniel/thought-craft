@@ -18,6 +18,7 @@ export const ENTITY_TYPES: Readonly<
   character: { label: 'Character', folder: 'Characters', icon: 'user-round' },
   scene: { label: 'Scene', folder: 'Scenes', icon: 'clapperboard' },
   location: { label: 'Location', folder: 'Locations', icon: 'map-pin' },
+  'plot-thread': { label: 'Plot Thread', folder: 'Plot Threads', icon: 'waypoints' },
   project: { label: 'Project', folder: 'Projects', icon: 'folder' },
 };
 

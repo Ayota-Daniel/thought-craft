@@ -1,4 +1,4 @@
-# Thought Craft architecture at M6.6
+# Thought Craft architecture at M7
 
 ## Separate responsibilities
 
@@ -19,13 +19,13 @@ These services are injected explicitly. React sends intents to the registries/re
 
 `EntityTypeDefinition` retains M3 fields: stable ID, editable label/folder, built-in/retired flags and ordered Property Schemas. Properties retain stable snake_case key, immutable type, editable label/default/max/options and retirement state. Five property kinds remain. They are global to this vault/plugin configuration: M4 does not add Workspace-specific variants, overrides or property-schema duplication.
 
-`WorkspaceDefinition` contains stable `id`, label, optional description, built-in/retired flags, `enabledEntityTypeIds` and `relationTypes`. Enabled IDs refer to global definitions. A disabled or globally retired type is excluded from creation; existing entities and values remain readable. New Workspaces start with Idea enabled unless the creation form explicitly changes that selection. No sample entities or templates are created.
+`WorkspaceDefinition` contains stable `id`, label, optional description, built-in/retired flags, `enabledEntityTypeIds`, `enabledExperiences` and `relationTypes`. Enabled IDs refer to global definitions. A disabled or globally retired type is excluded from creation; existing entities and values remain readable. New Workspaces start with Idea enabled unless the creation form explicitly changes that selection. No sample entities or templates are created.
 
 `WorkspaceRelationTypeDefinition` contains stable `id`, label, source/target type ID arrays and retirement state. Empty restrictions mean any enabled, globally active Entity Type. Multiple selected types use simple inclusion. No cardinality, automatic inverse edge or inverse-label feature is added. Relation IDs are scoped by their owning source Workspace, so identical IDs may have different definitions in different Workspaces. The five universal IDs are reserved.
 
 ## Configuration and migration
 
-`data.json` contains `configVersion: 6`, the existing capture folder/legacy default-workspace setting, global `entityTypes`, `workspaces`, and `activeWorkspaceId`, plus optional lazy `boards` visual state. Entity values/content/relations are never stored there.
+`data.json` contains `configVersion: 7`, the existing capture folder/legacy default-workspace setting, global `entityTypes`, `workspaces`, and `activeWorkspaceId`, plus optional lazy `boards` visual state. Entity values/content/relations are never stored there.
 
 Initialization loads global types, then performs the pure Workspace migration, constructs Workspace and relation services, and persists the migrated configuration before registering UI/rebuilding the vault index. M3 custom types/property schemas and unrelated configuration are retained. Missing `default` is seeded once with all types currently active at migration time, preserving prior creation availability. Subsequent global type creation does not automatically enable that type in existing Workspaces.
 
@@ -105,7 +105,7 @@ Visual connections open a native relation-kind picker. Choices come from the sam
 
 Selecting an edge exposes Remove relationship with confirmation, invoking the existing expected-relation removal path. Removing a card invokes only BoardStore.removeEntity: it cannot delete/archive an entity, edit values or remove relations. External rename/body/property/relation/schema changes update projections by UUID; Focus remains the detailed editor/native-note gateway.
 
-M5 is limited to one curated board per Workspace. M5 deferred grouping; M6 adds the visual groups described below. Named/nested boards, auto-layout, Parking Lot, drawing tools, specialized Story/Plot views, timelines, evaluations and formulas remain deferred. Keyboard support provides meaningful alternatives but is not a claim of complete assistive-technology coverage. **M7 has not been started.**
+M5 is limited to one curated board per Workspace. M5 deferred grouping; M6 adds the visual groups described below. Named/nested boards, auto-layout, Parking Lot, drawing tools, specialized Story/Plot views, timelines, evaluations and formulas remain deferred. Keyboard support provides meaningful alternatives but is not a claim of complete assistive-technology coverage. M7 now adds the Story foundation described below.
 
 
 ## M6: temporary contextual brainstorming
@@ -165,3 +165,24 @@ Row surfaces belong to the existing li, covering checkbox, main content, timesta
 The canvas toolbar gains Controls, using a native modal managed by existing BrainstormView dialog ownership. A shared textual control table is reused in Guide → Brainstorm. It documents the actual XYFlow configuration: rectangle selection, additive clicks, right/middle/Space pan, zoom, multi-card drag and focused-card keyboard opening/movement. The former permanent instruction paragraph is removed. Canvas configuration, Focus, groups, relations and board persistence are unchanged.
 
 M6.6 introduces no new dependency, persisted schema, migration, index or state framework. Configuration stays version 6. Full canvas assistive-technology/mobile/older-runtime validation, virtualization, database paging, advanced query features and all M7 work remain deferred.
+
+
+## M7: Story composition over the generic engine
+
+`WorkspaceExperienceId = "story"` and `WorkspaceDefinition.enabledExperiences` are the only experience capability model. WorkspaceRegistry normalizes absent pre-M7 values to `[]`, validates/freezes them, and persists explicit manager intents using its existing serialized queue. Configuration version becomes 7; no Markdown migration, global schema override or new ExperienceRegistry exists. Existing enabled type IDs, relation definitions, board/group state, active context and unknown configuration keys remain intact. Invalid experience definitions remain recoverable with the existing unreadable-definition policy.
+
+The global EntityTypeRegistry seeds `plot-thread` through its existing missing-built-in pass (label Plot Thread, folder Plot Threads, native waypoints icon, empty schema). A valid pre-M7 custom definition with that ID takes precedence: keep custom identity, editable fields, schema and retirement. It is the sole exception to built-in-ID validation, documented in the validator; restart never adds a duplicate or revives a retired custom definition. Missing definitions still seed normally. Existing Workspaces do not receive new enabled-type IDs. Story setup uses `WorkspaceRegistry.enableEntityType()` inside the same serialized commit, preserving concurrent enables.
+
+`ui/story/story-view.tsx` owns one native ItemView, its React root/subscription and per-Workspace subsection map. `story-app` composes the shared Workspace switcher/tabs with light secondary navigation, Overview, SetupNotice and one Collection component. The collection is keyed by Workspace/type, so changing either resets its search/sort/page state. Story content and counts are never cached in configuration. A disabled/retired experience shows a safe explanation rather than Story tools; existing Markdown remains available elsewhere.
+
+`application/story-query.ts` scans EntityIndex snapshots by Workspace and one of five known type IDs, searches titles, then calls the same `sortEntities()` extracted from Inbox. It intentionally includes archived/exploring Ideas as well as inbox Ideas: Story is a material collection, not Inbox lifecycle. M6.6 `paginateInbox()` and `InboxPagination` supply clamping, bounded navigation and fixed page sizes; the component gains only an optional accessible navigation label. `InboxRow` gains an optional selection affordance flag; Story reuses its entire hover/focus/Open/Add/Trash menu with no invisible cross-page selection. Inbox behavior remains the default.
+
+Overview derives counts from current indexed entities. Continue Writing resolves Scenes using existing metadata timestamps plus the native cached TFile.stat.mtime supplied at the UI integration boundary. This is necessary because native body editing deliberately does not rewrite bs_updated. There is no disk reparse on render, second timestamp store or EntityIndex change. Invalid dates use the remaining valid timestamps, then zero and stable UUID ties. The timestamp shown reflects this resolution. Collection metadata date/sort semantics stay shared with Inbox and are not narrative order.
+
+`createEntity(input, workspaceId, writer, types, workspaces)` provides generic source-free creation: validate Workspace/type/title, generate UUID/time, then call the existing writer/repository with no invented relation. StoryCreateDialog only collects title/initial notes. The repository remains authoritative for folder/status/schema/identity checks and actual Vault/FileManager writes. Scenes open the native Markdown note; other types open the same generic Focus. No Story body, subclass, repository, schema or board-node renderer exists.
+
+Focus carries an optional in-memory `StoryOrigin {workspaceId, section}` set when revealed from Story. Its Back label and callback return to that Workspace/section if still enabled; otherwise Inbox is the safe fallback. Related-entity/Create From navigation propagates this small origin; opening the same Focus tab from a generic source resets it. Obsidian’s restored Focus state remains UUID-only, so restarting does not persist navigation history. Story subsection state also stays in memory. No routing framework is introduced.
+
+The existing Brainstorm ItemView and BoardStore are shared unchanged by Story. Relations and property values use the same registries/repository queue. Story adds no recommended relation definitions automatically. Native commands expose only Open Story and Create Scene with appropriate capability checks. Guide adds one concise Story topic. Styles extend the existing Workspace/list/modal tokens, with no gradients, extra panel sidebar, animation or dependency.
+
+M8 is not started. Plot/Story Boards, Acts/Chapters, narrative ordering, Timeline, manuscript tools, Scene Editor replacement, arcs/graphs, Story schema overrides, AI and index optimizations remain deferred.

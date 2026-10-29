@@ -5,6 +5,7 @@ import {
 } from '../../application/inbox-pagination';
 
 export function InboxPagination({
+  label = 'Inbox pagination',
   page,
   pageCount,
   first,
@@ -14,6 +15,7 @@ export function InboxPagination({
   changePage,
   changeSize,
 }: {
+  label?: string;
   page: number;
   pageCount: number;
   first: number;
@@ -25,7 +27,7 @@ export function InboxPagination({
 }) {
   if (!total) return null;
   return (
-    <nav className="tc-pagination" aria-label="Inbox pagination">
+    <nav className="tc-pagination" aria-label={label}>
       <span role="status">
         Showing {first}–{last} of {total}
       </span>

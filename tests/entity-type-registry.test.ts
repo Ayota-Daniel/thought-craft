@@ -20,13 +20,14 @@ const motivation: PropertySchema = {
 const quest = { id: 'quest', label: 'Quest', folderName: 'Quests' };
 
 describe('global entity type registry', () => {
-  it('seeds five empty built-ins once and preserves their order after restart', async () => {
+  it('seeds six empty built-ins once and preserves their order after restart', async () => {
     const registry = new EntityTypeRegistry();
     expect(registry.getAll().map((type) => type.id)).toEqual([
       'idea',
       'character',
       'scene',
       'location',
+      'plot-thread',
       'project',
     ]);
     expect(
@@ -36,7 +37,7 @@ describe('global entity type registry', () => {
     ).toBe(true);
     await registry.updateType('character', { label: 'Person' });
     const restored = new EntityTypeRegistry(JSON.parse(JSON.stringify(registry.getAll())));
-    expect(restored.getAll()).toHaveLength(5);
+    expect(restored.getAll()).toHaveLength(6);
     expect(restored.getAll().map((type) => type.id)).toEqual(
       registry.getAll().map((type) => type.id),
     );
@@ -118,7 +119,7 @@ describe('global entity type registry', () => {
     expect(registry.unreadableDefinitions).toEqual([broken]);
     expect(registry.get('creature')).toBeUndefined();
     expect(registry.label('creature')).toBe('Unknown Entity Type: creature');
-    expect(registry.getAll()).toHaveLength(5);
+    expect(registry.getAll()).toHaveLength(6);
     expect(() => new EntityTypeRegistry('broken')).toThrow('configuration');
   });
 });

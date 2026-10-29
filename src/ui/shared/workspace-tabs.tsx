@@ -1,17 +1,24 @@
 import { type KeyboardEvent } from 'react';
 
-const views = ['Inbox', 'Brainstorm'] as const;
+type WorkspaceView = 'Inbox' | 'Brainstorm' | 'Story';
 export function WorkspaceTabs({
   active,
   inbox,
   brainstorm,
+  story,
 }: {
-  active: (typeof views)[number];
+  active: WorkspaceView;
   inbox: () => void;
   brainstorm: () => void;
+  story?: () => void;
 }) {
-  function navigate(label: (typeof views)[number], keyboard = false): void {
-    if (label !== active) (label === 'Inbox' ? inbox : brainstorm)();
+  const views: WorkspaceView[] = story ? ['Inbox', 'Brainstorm', 'Story'] : ['Inbox', 'Brainstorm'];
+  function navigate(label: WorkspaceView, keyboard = false): void {
+    if (label !== active) {
+      if (label === 'Inbox') inbox();
+      if (label === 'Brainstorm') brainstorm();
+      if (label === 'Story') story?.();
+    }
     if (keyboard) {
       // Native ItemViews are separate mounted panels. Restore focus in the revealed view.
       let attempts = 0;

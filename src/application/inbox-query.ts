@@ -58,7 +58,12 @@ export function queryInbox(
       return false;
     return true;
   });
-  const sortedEntities = filteredEntities.sort((a, b) => {
+  return sortEntities(filteredEntities, sort);
+}
+
+/** Shared title/date ordering; never mutates the caller's EntityIndex snapshot. */
+export function sortEntities(entities: readonly Entity[], sort: InboxSort): Entity[] {
+  return [...entities].sort((a, b) => {
     let order = 0;
     if (sort === 'newest') order = Date.parse(b.createdAt) - Date.parse(a.createdAt);
     if (sort === 'oldest') order = Date.parse(a.createdAt) - Date.parse(b.createdAt);
@@ -67,5 +72,4 @@ export function queryInbox(
     if (sort === 'za') order = b.title.localeCompare(a.title);
     return order || a.id.localeCompare(b.id);
   });
-  return sortedEntities;
 }

@@ -353,6 +353,7 @@ describe('concise product documentation', () => {
       'Properties',
       'Workspaces',
       'Brainstorm',
+      'Story',
       'Relations',
     ]);
   });

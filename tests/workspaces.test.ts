@@ -84,7 +84,7 @@ describe('workspace configuration and active context', () => {
     const registry = new WorkspaceRegistry(migrated.workspaces, migrated.activeWorkspaceId, []);
     expect(registry.getActive().id).toBe('default');
     expect(registry.get('novel')).toBeUndefined();
-    expect(() => migrateWorkspaces({ configVersion: 7 }, [])).toThrow('newer');
+    expect(() => migrateWorkspaces({ configVersion: 8 }, [])).toThrow('newer');
   });
 
   it('creates a normalized stable ID, description and default Idea membership', async () => {
@@ -193,22 +193,20 @@ describe('workspace creation boundaries and queries', () => {
   it('does not silently enable newly defined global types and excludes retired types', async () => {
     const { types, workspaces } = setup();
     await types.createCustomType({
-      id: 'plot-thread',
-      label: 'Plot Thread',
-      folderName: 'Plot Threads',
+      id: 'story-arc',
+      label: 'Story Arc',
+      folderName: 'Story Arcs',
     });
     expect(
-      workspaces.getAvailableEntityTypes('novel', types).some((type) => type.id === 'plot-thread'),
+      workspaces.getAvailableEntityTypes('novel', types).some((type) => type.id === 'story-arc'),
     ).toBe(false);
-    await workspaces.update('novel', { enabledEntityTypeIds: ['idea', 'plot-thread'] });
-    expect(() => workspaces.validateCreation('novel', 'plot-thread', types)).not.toThrow();
+    await workspaces.update('novel', { enabledEntityTypeIds: ['idea', 'story-arc'] });
+    expect(() => workspaces.validateCreation('novel', 'story-arc', types)).not.toThrow();
     expect(
-      workspaces
-        .getAvailableEntityTypes('default', types)
-        .some((type) => type.id === 'plot-thread'),
+      workspaces.getAvailableEntityTypes('default', types).some((type) => type.id === 'story-arc'),
     ).toBe(false);
-    await types.updateType('plot-thread', { retired: true });
-    expect(() => workspaces.validateCreation('novel', 'plot-thread', types)).toThrow('unavailable');
+    await types.updateType('story-arc', { retired: true });
+    expect(() => workspaces.validateCreation('novel', 'story-arc', types)).toThrow('unavailable');
   });
 
   it('keeps the source workspace when active context changes and rejects disabled Create From programmatically', async () => {

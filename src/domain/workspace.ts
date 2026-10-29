@@ -1,4 +1,5 @@
 export type WorkspaceId = string;
+export type WorkspaceExperienceId = 'story';
 
 export interface WorkspaceRelationTypeDefinition {
   readonly id: string;
@@ -14,6 +15,7 @@ export interface WorkspaceDefinition {
   readonly description?: string;
   readonly builtIn: boolean;
   readonly retired: boolean;
+  readonly enabledExperiences: readonly WorkspaceExperienceId[];
   readonly enabledEntityTypeIds: readonly string[];
   readonly relationTypes: readonly WorkspaceRelationTypeDefinition[];
 }

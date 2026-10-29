@@ -387,7 +387,7 @@ try {
   assert.equal(await readFile(join(vault, 'Old M3 idea.md'), 'utf8'), oldBytes);
   assert.ok((await creationChoices(oldId)).includes('quest'));
   const migrated = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
-  assert.equal(migrated.configVersion, 6);
+  assert.equal(migrated.configVersion, 7);
   assert.equal(migrated.workspaces.filter((workspace) => workspace.id === 'default').length, 1);
   assert.equal(
     migrated.entityTypes.find((type) => type.id === 'quest').properties[0].key,
@@ -443,29 +443,29 @@ try {
   );
 
   await evaluate(
-    "window.tcPlotReady=false; app.plugins.plugins['thought-craft'].registry.createCustomType({id:'plot-thread',label:'Plot Thread',folderName:'Plot Threads'}).then(() => {window.tcPlotReady=true;}); true",
+    "window.tcPlotReady=false; app.plugins.plugins['thought-craft'].registry.createCustomType({id:'story-arc',label:'Story Arc',folderName:'Story Arcs'}).then(() => {window.tcPlotReady=true;}); true",
   );
   await page.waitForFunction(() => window.tcPlotReady);
   await openWorkspaceManager('The Last Train');
   await workspaceDetail()
     .getByRole('group', { name: 'Enabled entity types' })
-    .getByRole('checkbox', { name: 'Plot Thread', exact: true })
+    .getByRole('checkbox', { name: 'Story Arc', exact: true })
     .check();
   await workspaceDetail().getByRole('button', { name: 'Save workspace', exact: true }).click();
   await page.waitForFunction(() =>
     window.app.plugins.plugins['thought-craft'].workspaces
       .get('the-last-train')
-      .enabledEntityTypeIds.includes('plot-thread'),
+      .enabledEntityTypeIds.includes('story-arc'),
   );
   await closeWorkspaceManager();
-  assert.ok((await creationChoices(idea.id)).includes('plot-thread'));
+  assert.ok((await creationChoices(idea.id)).includes('story-arc'));
   await switchWorkspace('default');
-  assert.equal((await creationChoices(oldId)).includes('plot-thread'), false);
+  assert.equal((await creationChoices(oldId)).includes('story-arc'), false);
   await openFocus(character.id);
   await activeFocus().getByText('Workspace · The Last Train', { exact: true }).waitFor();
   await switchWorkspace('the-last-train');
   checks.push(
-    'Global custom Plot Thread is enabled only through Workspace Manager; creation choices are scoped to source Workspace, even after the active context changes. Open Focus remains tied to its actual entity.',
+    'Global custom Story Arc is enabled only through Workspace Manager; creation choices are scoped to source Workspace, even after the active context changes. Open Focus remains tied to its actual entity.',
   );
 
   await openWorkspaceManager('The Last Train');

@@ -1,4 +1,8 @@
-import type { WorkspaceDefinition, WorkspaceRelationTypeDefinition } from '../domain/workspace';
+import type {
+  WorkspaceDefinition,
+  WorkspaceExperienceId,
+  WorkspaceRelationTypeDefinition,
+} from '../domain/workspace';
 import { isEntityType } from '../domain/entity-type';
 import { RELATION_TYPES } from '../domain/entity-relation';
 import { typeIdForLabel, type EntityTypeRegistry } from './entity-type-registry';
@@ -52,6 +56,13 @@ function validateWorkspace(workspace: WorkspaceDefinition): void {
   if (workspace.description !== undefined && typeof workspace.description !== 'string') {
     throw new Error('Workspace description must be text.');
   }
+  if (
+    !Array.isArray(workspace.enabledExperiences) ||
+    workspace.enabledExperiences.some((id) => id !== 'story') ||
+    new Set(workspace.enabledExperiences).size !== workspace.enabledExperiences.length
+  ) {
+    throw new Error('Choose distinct, supported experiences.');
+  }
   validateIds(workspace.enabledEntityTypeIds);
   const ids = new Set<string>();
   for (const relation of workspace.relationTypes) {
@@ -66,6 +77,7 @@ function validateWorkspace(workspace: WorkspaceDefinition): void {
 function freezeWorkspace(workspace: WorkspaceDefinition): WorkspaceDefinition {
   return Object.freeze({
     ...workspace,
+    enabledExperiences: Object.freeze([...workspace.enabledExperiences]),
     enabledEntityTypeIds: Object.freeze([...workspace.enabledEntityTypeIds]),
     relationTypes: Object.freeze(
       workspace.relationTypes.map((relation) =>
@@ -105,7 +117,11 @@ export class WorkspaceRegistry {
         if (!isRecord(raw) || !Array.isArray(raw.relationTypes)) {
           throw new Error('Invalid workspace definition.');
         }
-        const workspace = raw as unknown as WorkspaceDefinition;
+        // Missing experience state belongs to pre-M7 configuration. No opt-in is inferred.
+        const workspace = {
+          ...raw,
+          enabledExperiences: raw.enabledExperiences === undefined ? [] : raw.enabledExperiences,
+        } as unknown as WorkspaceDefinition;
         validateWorkspace(workspace);
         if (this.get(workspace.id)) {
           throw new Error(`Duplicate workspace ID: ${workspace.id}`);
@@ -124,6 +140,7 @@ export class WorkspaceRegistry {
           label: 'Default',
           builtIn: true,
           retired: false,
+          enabledExperiences: [],
           enabledEntityTypeIds: [...initialTypeIds],
           relationTypes: [],
         }),
@@ -174,6 +191,7 @@ export class WorkspaceRegistry {
     id: string;
     label: string;
     description?: string;
+    enabledExperiences?: readonly WorkspaceExperienceId[];
     enabledEntityTypeIds?: readonly string[];
   }): Promise<void> {
     return this.commit(() => {
@@ -187,6 +205,7 @@ export class WorkspaceRegistry {
         label: input.label.trim(),
         builtIn: false,
         retired: false,
+        enabledExperiences: input.enabledExperiences ?? [],
         enabledEntityTypeIds: input.enabledEntityTypeIds ?? ['idea'],
         relationTypes: [],
       };
@@ -198,6 +217,7 @@ export class WorkspaceRegistry {
     changes: {
       label?: string;
       description?: string;
+      enabledExperiences?: readonly WorkspaceExperienceId[];
       enabledEntityTypeIds?: readonly string[];
       retired?: boolean;
     },
@@ -208,6 +228,19 @@ export class WorkspaceRegistry {
       id,
       label: (changes.label ?? this.require(id).label).trim(),
     }));
+  }
+
+  enableEntityType(workspaceId: string, typeId: string, types: EntityTypeRegistry): Promise<void> {
+    return this.commit(() => {
+      const workspace = this.require(workspaceId);
+      if (workspace.retired || !types.get(typeId) || types.get(typeId)?.retired) {
+        throw new Error('This entity type or Workspace is unavailable.');
+      }
+      return {
+        ...workspace,
+        enabledEntityTypeIds: [...new Set([...workspace.enabledEntityTypeIds, typeId])],
+      };
+    });
   }
 
   setActive(id: string): Promise<void> {

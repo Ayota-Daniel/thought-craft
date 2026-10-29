@@ -1,4 +1,4 @@
-# Thought Craft — M6.6
+# Thought Craft — M7
 
 An Obsidian community plugin built around **Entity + Property + Relation**. Capture ideas, inspect local properties, connect entities by UUID, and create new entities from existing ones. Built-in and custom Entity Types share the same Focus View, reusable property schemas and UUID relations. Markdown remains the source of truth for entity data; Entity Type/property schemas are global vault configuration. Workspaces scope creation and Inbox, and define custom relation types. Brainstorm adds one curated spatial board per Workspace, as a view of the same Markdown entities and relations.
 
@@ -53,7 +53,7 @@ Capture uses the active Workspace. The existing Idea folder remains configurable
 
 Use **Save** after editing settings. Invalid or absolute folder paths are rejected. Changing settings does not move existing notes. The Inbox displays inbox Ideas and non-archived entities of other types in the active Workspace, wherever their notes live. Its query is not limited to the capture folder; switching Workspace does not change entity membership or close open Focus/Markdown tabs.
 
-Settings use Obsidian's `loadData` / `saveData` APIs. `data.json` contains capture settings, `configVersion: 6`, `entityTypes`, `workspaces`, `activeWorkspaceId` and optional `boards` visual state. These are definitions, UI context and board-only visual state: entity identity, values, relations and content remain in Markdown. M0–M5 configuration migrates without rewriting notes; missing built-ins are seeded once with no opinionated properties. Unknown configuration fields and unreadable individual type definitions are retained. A malformed type-list root or a newer configuration version blocks loading rather than overwriting configuration.
+Settings use Obsidian's `loadData` / `saveData` APIs. `data.json` contains capture settings, `configVersion: 7`, `entityTypes`, `workspaces`, `activeWorkspaceId` and optional `boards` visual state. These are definitions, UI context and board-only visual state: entity identity, values, relations and content remain in Markdown. M0–M6.6 configuration migrates without rewriting notes; missing built-ins are seeded once with no opinionated properties. Unknown configuration fields and unreadable individual type definitions are retained. A malformed type-list root or a newer configuration version blocks loading rather than overwriting configuration.
 
 ### Entity destinations
 
@@ -65,6 +65,7 @@ The existing `entitiesFolder` setting remains the **Idea folder**. Other entity 
 | Character | `Brainstorm/Characters` | `exploring`    |
 | Scene     | `Brainstorm/Scenes`     | `exploring`    |
 | Location  | `Brainstorm/Locations`  | `exploring`    |
+| Plot Thread | `Brainstorm/Plot Threads` | `exploring` |
 | Project   | `Brainstorm/Projects`   | `exploring`    |
 
 If the Idea folder is `Custom/Captures`, Characters are created in `Custom/Characters`, and so on. If it is a single root folder such as `Ideas`, the other folders are also at the vault root. No existing notes are moved. Type Manager folder edits affect only future creations. Editing Idea’s folder name also updates the existing capture destination; its parent can be changed in capture settings. Custom types use the same folder resolver, with safe nested relative paths allowed. All valid entities are indexed wherever their files live. Inbox retains Ideas with status `inbox` and also exposes non-archived other types. Focus links and relation search remain available. Workspace membership never changes their physical folder.
@@ -131,6 +132,22 @@ Text, number and rating inputs commit on **Enter** or **blur**; **Escape** disca
 The `bs_properties` format above is the same nested mapping used for every type. Text, number and boolean definitions contain `label`, `type`, and `value`; rating adds `max`; select adds `options`. Local definitions remain unchanged. They are separate from reusable schemas, and no parallel JSON entity storage or database is introduced.
 
 Invalid custom-property definitions are reported in Focus and retained verbatim in frontmatter. Valid neighboring properties remain editable. A malformed `bs_properties` container is never silently replaced; repair it in the Markdown note before making property changes. Unknown keys inside valid definitions are preserved on value updates.
+
+## Story — a Workspace experience
+
+Enable **Story** in **Manage workspaces → Specialized experiences**, then save. Existing Workspaces migrate with `enabledExperiences: []`: no Story tools or additional Entity Types are enabled automatically. Story setup offers explicit Enable actions for missing recommended types; use only the types you need.
+
+**Inbox | Brainstorm | Story** share the active Workspace. Story has light local navigation for **Overview, Scenes, Characters, Locations, Plot Threads and Ideas**. Overview offers Continue writing and computed collection counts. Collections search titles, sort by recently updated/newest/name and reuse 25/50/100-row pagination. Story includes all lifecycle states, including archived material, so the generic Inbox lifecycle cannot hide a writer’s notes. Search/sort/page state stays temporary and resets when leaving a collection.
+
+**Continue writing** opens the latest edited Scene’s real Markdown file. It compares `bs_updated`, creation time and Obsidian’s cached native file modification time, so native body edits are included without updating frontmatter. Collection date sorting retains the shared metadata timestamp behavior. No narrative or chronological order is implied.
+
+**+ Scene → Create & write** creates a normal Entity and opens the native Markdown editor. Other quick creations open the existing Focus View, with Properties, Relations, Create From and Brainstorm actions. Focus opened from Story returns to that collection; this small origin context stays in memory and is cleared after restart. Opening Focus through Inbox or Brainstorm restores normal Back to inbox behavior. Story subsection is remembered per Workspace while its native view remains open.
+
+Story shares the existing Workspace Brainstorm Board, schemas and relation definitions. **Plot Thread** is the sixth built-in type, stable ID `plot-thread`, default folder `Plot Threads`, empty schema. A pre-existing custom type with that ID retains its label, folder, schema and retirement state; no duplicate or silent replacement occurs. If it is retired, restore it through Entity Type Manager. Global type seeding does not add it to existing Workspace enabled-type lists.
+
+Disabling Story hides its primary tab and tools; an already-open Story pane explains the disabled state. It never deletes notes, disables types, clears relations or changes the board. Re-enabling restores access. **Open Story** and **Create Scene** commands are available when the active Workspace has the required capability. Guide includes a concise Story topic.
+
+Thoughtcraft organizes; Obsidian writes. Plot/Story Boards, Chapters, Timeline, specialized Scene Editor and Story schema overrides remain deferred. **M8 has not been started.** See [M7 validation](docs/m7-validation.md).
 
 ## Brainstorm Board
 
@@ -379,13 +396,14 @@ npm run test:obsidian:m5
 npm run test:obsidian:m6
 npm run test:obsidian:m6-5
 npm run test:obsidian:m6-6
+npm run test:obsidian:m7
 ```
 
 These opt-in Linux checks open a **real Obsidian process**, using isolated application profiles and disposable vaults under `.artifacts/`. They enable only the locally built plugin. M0 covers capture and synchronization; M1 covers Focus and custom properties; M2 covers relations, Create From, generic types, malformed external entries, dangling targets and restarts. M3 covers type/schema configuration, all five value kinds, virtual defaults, legacy values, retirement, custom folders, unknown types and configuration loss/restoration. M4 covers Workspace migration/switching, creation restrictions, custom relations, cross-Workspace policies, compatibility feedback and retirement. M5 covers curated board membership, real creation, drag/keyboard placement, viewport/restarts, visual relations, Workspace isolation, external synchronization and styling. M6 covers contextual centering/neighbors, connected creation, visual groups, group movement/persistence, join/leave/removal, cleanup, theme/narrow/reduced-motion behavior and M5 migration. They do not use your normal Obsidian profile or vaults. Each closes its own test process after the run. M6.5 adds a 35-entity search/filter/batch/trash journey, multi-select picker, rectangle drag, multi-root Focus, tabs and Guide checks. M6.6 adds a 135-note pagination/popover/row/help journey. A Linux desktop session is required.
 
 Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md), [M3 validation](docs/m3-validation.md), [M4 validation](docs/m4-validation.md), [M5 validation](docs/m5-validation.md), [M6 validation](docs/m6-validation.md), [M6.5 validation](docs/m6-5-validation.md) and [M6.6 validation](docs/m6-6-validation.md) for results and manual checklists.
 
-## M6.6 limitations and later milestones
+## M7 limitations and later milestones
 
 Brainstorm supports one board per Workspace, free placement and basic pan/zoom. There are no named boards, nested groups, auto-layout, dedicated Parking Lot, drawing tools or full in-card editors. Group boundary resizing is deferred; use Fit group to members after changes. Card bodies/properties are intentionally omitted. Parallel labels are offset, but paths/labels are not routed around other cards; arrange cards manually. Layout persistence and Markdown persistence are separate: if placement fails after creating a note, the dialog reports its recovery path for Add existing rather than silently losing the note.
 
@@ -395,7 +413,7 @@ Focus previews Markdown; editing the body uses Obsidian’s native note editor. 
 
 Type IDs, property keys and property types cannot be changed after creation through the UI. Type/property retirement is reversible; destructive schema deletion and automatic value migrations are deliberately unavailable. Schema ordering follows insertion order; there is no drag-and-drop ordering. Incoming relations still use a scan. Externally duplicated entity UUIDs still mean one identity and need manual repair when making independent copies. Only the current Linux Obsidian version was validated; mobile, other platforms and older versions require separate checks.
 
-Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized story/project screens, specialized Story/Plot boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M7 has not been started.
+Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized project screens, specialized Story/Plot boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M8 has not been started.
 
 ## Files added
 

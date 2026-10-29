@@ -26,6 +26,7 @@ export interface InboxProps {
   index: EntityIndex;
   capture: () => void;
   showBrainstorm: () => void;
+  showStory: () => void;
   open: (id: string) => void;
   add: (ids: readonly string[]) => Promise<void>;
   trash: (ids: readonly string[]) => void;
@@ -134,7 +135,12 @@ export function Inbox(props: InboxProps) {
       aria-labelledby="tc-inbox-inbox-tab"
     >
       <WorkspaceSwitcher workspaces={workspaces} manage={props.manageWorkspaces} />
-      <WorkspaceTabs active="Inbox" inbox={() => undefined} brainstorm={props.showBrainstorm} />
+      <WorkspaceTabs
+        active="Inbox"
+        inbox={() => undefined}
+        brainstorm={props.showBrainstorm}
+        story={active.enabledExperiences.includes('story') ? props.showStory : undefined}
+      />
       <header className="tc-inbox-header">
         <div>
           <span className="tc-eyebrow">Thought Craft</span>

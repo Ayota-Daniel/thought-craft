@@ -1,3 +1,13 @@
+import { StoryView, STORY_VIEW_TYPE } from './ui/story/story-view';
+import { StoryCreateDialog } from './ui/story/story-create-dialog';
+import {
+  STORY_COLLECTIONS,
+  storyEnabled,
+  type StoryOrigin,
+  type StorySection,
+  type StoryType,
+} from './application/story-query';
+import { TrashEntitiesModal } from './ui/inbox/trash-entities-modal';
 import { ThoughtcraftGuide } from './ui/guide/guide-modal';
 import { prepareBrainstormContext } from './application/contextual-brainstorm';
 import { WorkspaceBoardStore } from './application/workspace-board-store';
@@ -21,7 +31,7 @@ import { ThoughtCraftSettingsTab } from './settings/settings-tab';
 import { QuickCaptureModal } from './ui/capture/quick-capture-modal';
 import { InboxView, INBOX_VIEW_TYPE } from './ui/inbox/inbox-view';
 import { FocusView, FOCUS_VIEW_TYPE } from './ui/focus/focus-view';
-import { createFrom } from './application/create-entity';
+import { createEntity, createFrom } from './application/create-entity';
 
 export default class ThoughtCraftPlugin extends Plugin {
   settings: BrainstormSettings = { ...DEFAULT_SETTINGS };
@@ -35,6 +45,8 @@ export default class ThoughtCraftPlugin extends Plugin {
   private typeManager: TypeManagerModal | null = null;
   private repository!: ObsidianEntityRepository;
   private disposed = false;
+  private storyDialog: StoryCreateDialog | null = null;
+  private storyTrash: TrashEntitiesModal | null = null;
   private captureModal: QuickCaptureModal | null = null;
 
   async onload(): Promise<void> {
@@ -123,6 +135,9 @@ export default class ThoughtCraftPlugin extends Plugin {
         },
         this.boards,
         this.repository,
+        () => {
+          void this.showStory();
+        },
       );
       this.register(() => view.dispose());
       return view;
@@ -139,7 +154,7 @@ export default class ThoughtCraftPlugin extends Plugin {
           void this.openMarkdownNote(entityId);
         },
         (entityId) => {
-          void this.openEntityFocus(entityId);
+          void this.openEntityFocus(entityId, view.getNavigationOrigin());
         },
         async (sourceEntityId, input) => {
           const created = await createFrom(
@@ -150,7 +165,7 @@ export default class ThoughtCraftPlugin extends Plugin {
             this.registry,
             this.workspaces,
           );
-          await this.openEntityFocus(created.id);
+          await this.openEntityFocus(created.id, view.getNavigationOrigin());
         },
         this.registry,
         (typeId) => this.openTypeManager(typeId),
@@ -182,6 +197,9 @@ export default class ThoughtCraftPlugin extends Plugin {
           openFocus: (id) => {
             void this.openEntityFocus(id);
           },
+          showStory: () => {
+            void this.showStory();
+          },
           showInbox: () => {
             void this.showInbox();
           },
@@ -190,6 +208,76 @@ export default class ThoughtCraftPlugin extends Plugin {
       );
       this.register(() => view.disposeBoard());
       return view;
+    });
+    this.registerView(STORY_VIEW_TYPE, (leaf) => {
+      const view = new StoryView(
+        leaf,
+        {
+          index: this.entityIndex,
+          types: this.registry,
+          workspaces: this.workspaces,
+          relations: this.relationTypes,
+          boards: this.boards,
+          writer: this.repository,
+        },
+        {
+          inbox: () => {
+            void this.showInbox();
+          },
+          brainstorm: () => {
+            void this.showBrainstorm();
+          },
+          manageWorkspaces: () => this.openWorkspaceManager(),
+          manageTypes: (id) => this.openTypeManager(id),
+          open: (id, origin) => {
+            void this.openEntityFocus(id, origin);
+          },
+          write: (id) => {
+            void this.openMarkdownNote(id);
+          },
+          create: (type, origin) => this.openStoryCreation(type, origin),
+          add: (id) => {
+            const entity = this.entityIndex.getById(id);
+            if (!entity) return;
+            void this.boards.addEntities(entity.workspaceId, [id]).catch((error: unknown) => {
+              new Notice(error instanceof Error ? error.message : 'Could not add to Brainstorm.');
+            });
+          },
+          trash: (id) => this.trashStoryEntity(id),
+          modifiedAt: (entity) => {
+            const file = this.app.vault.getAbstractFileByPath(entity.filePath);
+            return file instanceof TFile ? file.stat.mtime : undefined;
+          },
+          guide: () => new ThoughtcraftGuide(this.app, 'Story').open(),
+        },
+      );
+      this.register(() => view.disposeStory());
+      return view;
+    });
+    this.addCommand({
+      id: 'open-story',
+      name: 'Open Story',
+      checkCallback: (checking) => {
+        const enabled = storyEnabled(this.workspaces.getActive());
+        if (enabled && !checking) void this.showStory();
+        return enabled;
+      },
+    });
+    this.addCommand({
+      id: 'create-scene',
+      name: 'Create Scene',
+      checkCallback: (checking) => {
+        const workspace = this.workspaces.getActive();
+        const enabled =
+          storyEnabled(workspace) &&
+          this.workspaces
+            .getAvailableEntityTypes(workspace.id, this.registry)
+            .some((type) => type.id === 'scene');
+        if (enabled && !checking) {
+          this.openStoryCreation('scene', { workspaceId: workspace.id, section: 'scene' });
+        }
+        return enabled;
+      },
     });
     this.addCommand({
       id: 'open-guide',
@@ -269,6 +357,8 @@ export default class ThoughtCraftPlugin extends Plugin {
 
   onunload(): void {
     this.disposed = true;
+    this.storyDialog?.close();
+    this.storyTrash?.close();
     this.captureModal?.close();
     this.typeManager?.close();
     this.workspaceManager?.close();
@@ -335,13 +425,13 @@ export default class ThoughtCraftPlugin extends Plugin {
       .then(async () => {
         const raw: unknown = await this.loadData();
         const existing = isRecord(raw) ? raw : {};
-        if (typeof existing.configVersion === 'number' && existing.configVersion > 6) {
+        if (typeof existing.configVersion === 'number' && existing.configVersion > 7) {
           throw new Error('This configuration was created by a newer Thought Craft version.');
         }
         const next = {
           ...existing,
           ...(typeof changes === 'function' ? changes(existing) : changes),
-          configVersion: 6,
+          configVersion: 7,
         };
         await this.saveData(next);
         this.settings = settingsFromData(next);
@@ -411,6 +501,87 @@ export default class ThoughtCraftPlugin extends Plugin {
     }
   }
 
+  private async showStory(section?: StorySection): Promise<void> {
+    try {
+      if (!storyEnabled(this.workspaces.getActive())) {
+        await this.showInbox();
+        return;
+      }
+      const leaf =
+        this.app.workspace.getLeavesOfType(STORY_VIEW_TYPE)[0] ?? this.app.workspace.getLeaf('tab');
+      if (leaf.view.getViewType() !== STORY_VIEW_TYPE) {
+        await leaf.setViewState({ type: STORY_VIEW_TYPE, active: true });
+      }
+      if (section && leaf.view instanceof StoryView) leaf.view.navigate(section);
+      await this.app.workspace.revealLeaf(leaf);
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : 'Could not open Story.');
+    }
+  }
+
+  private async returnToStory(origin?: StoryOrigin): Promise<void> {
+    const workspace = origin ? this.workspaces.get(origin.workspaceId) : undefined;
+    if (!workspace || !storyEnabled(workspace)) {
+      await this.showInbox();
+      return;
+    }
+    try {
+      await this.workspaces.setActive(workspace.id);
+      await this.showStory(origin?.section);
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : 'Could not return to Story.');
+    }
+  }
+
+  private openStoryCreation(type: StoryType, origin: StoryOrigin): void {
+    if (this.storyDialog) return;
+    const workspace = this.workspaces.get(origin.workspaceId);
+    if (!workspace || !storyEnabled(workspace)) return;
+    const collection = STORY_COLLECTIONS.find((item) => item.id === type)!;
+    this.storyDialog = new StoryCreateDialog(
+      this.app,
+      type,
+      collection.singular,
+      workspace.label,
+      async (input) => {
+        const current = this.workspaces.get(workspace.id);
+        if (!current || !storyEnabled(current))
+          throw new Error('Story is no longer enabled in this Workspace.');
+        const entity = await createEntity(
+          input,
+          workspace.id,
+          this.repository,
+          this.registry,
+          this.workspaces,
+        );
+        if (type === 'scene') await this.openMarkdownNote(entity.id);
+        else await this.openEntityFocus(entity.id, origin);
+      },
+      () => {
+        this.storyDialog = null;
+      },
+    );
+    this.storyDialog.open();
+  }
+
+  private trashStoryEntity(id: string): void {
+    if (this.storyTrash) return;
+    const entity = this.entityIndex.getById(id);
+    if (!entity) return;
+    this.storyTrash = new TrashEntitiesModal(
+      this.app,
+      entity.workspaceId,
+      [id],
+      this.entityIndex,
+      this.repository,
+      this.boards,
+      () => {
+        this.storyTrash = null;
+      },
+    );
+    this.storyTrash.open();
+  }
+
   private async showBrainstorm(): Promise<void> {
     try {
       const leaf =
@@ -439,7 +610,7 @@ export default class ThoughtCraftPlugin extends Plugin {
     }
   }
 
-  private async openEntityFocus(id: string): Promise<void> {
+  private async openEntityFocus(id: string, origin?: StoryOrigin): Promise<void> {
     try {
       if (!this.entityIndex.getById(id)) {
         throw new Error('This entity is no longer available in the vault.');
@@ -455,6 +626,11 @@ export default class ThoughtCraftPlugin extends Plugin {
         state: { entityId: id },
         active: true,
       });
+      if (leaf.view instanceof FocusView) {
+        leaf.view.setNavigationOrigin(origin, () => {
+          void this.returnToStory(origin);
+        });
+      }
       await this.app.workspace.revealLeaf(leaf);
     } catch (error) {
       new Notice(error instanceof Error ? error.message : 'Could not open this entity.');

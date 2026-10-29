@@ -6,6 +6,7 @@ const formatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', time
 export function InboxRow({
   entity,
   selected,
+  selectable = true,
   typeLabel,
   workspaceLabel,
   select,
@@ -15,6 +16,7 @@ export function InboxRow({
 }: {
   entity: Entity;
   selected: boolean;
+  selectable?: boolean;
   typeLabel: string;
   workspaceLabel: string;
   select: (range: boolean) => void;
@@ -23,7 +25,7 @@ export function InboxRow({
   trash: () => void;
 }) {
   function rowClick(event: MouseEvent): void {
-    if (event.ctrlKey || event.metaKey || event.shiftKey) {
+    if (selectable && (event.ctrlKey || event.metaKey || event.shiftKey)) {
       event.preventDefault();
       select(event.shiftKey);
     } else open();
@@ -41,12 +43,14 @@ export function InboxRow({
   }
   return (
     <li className={`tc-inbox-item${selected ? ' is-selected' : ''}`} data-entity-id={entity.id}>
-      <input
-        type="checkbox"
-        checked={selected}
-        aria-label={`Select ${entity.title}`}
-        onChange={() => select(false)}
-      />
+      {selectable && (
+        <input
+          type="checkbox"
+          checked={selected}
+          aria-label={`Select ${entity.title}`}
+          onChange={() => select(false)}
+        />
+      )}
       <button className="tc-inbox-row" onClick={rowClick}>
         <span className="tc-row-main">
           <span className="tc-row-title">{entity.title}</span>
