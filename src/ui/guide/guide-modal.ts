@@ -1,6 +1,6 @@
 import { renderCanvasControls } from './canvas-controls';
 import { Modal, type App } from 'obsidian';
-import { GUIDE_TOPICS, RELATION_GUIDE, type GuideTopic } from './guide-content';
+import { GUIDE_TOPICS, RELATION_GUIDE, PLOT_THREAD_GUIDE, type GuideTopic } from './guide-content';
 
 export class ThoughtcraftGuide extends Modal {
   constructor(
@@ -18,6 +18,12 @@ export class ThoughtcraftGuide extends Modal {
       body.empty();
       body.createEl('h2', { text: topic });
       body.createEl('p', { text: GUIDE_TOPICS[topic] });
+      if (topic === 'Plot Threads') {
+        for (const section of PLOT_THREAD_GUIDE) {
+          body.createEl('h3', { text: section.title });
+          body.createEl('p', { text: section.text });
+        }
+      }
       if (topic === 'Brainstorm') {
         body.createEl('h3', { text: 'Canvas controls' });
         renderCanvasControls(body);

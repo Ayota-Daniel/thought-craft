@@ -89,7 +89,9 @@ export class FocusView extends ItemView {
       return;
     }
     const section =
-      STORY_COLLECTIONS.find((item) => item.id === origin.section)?.label ?? 'Overview';
+      origin.section === 'plot'
+        ? 'Plot'
+        : (STORY_COLLECTIONS.find((item) => item.id === origin.section)?.label ?? 'Overview');
     this.backLabel?.setText(`Back to Story · ${section}`);
   }
 

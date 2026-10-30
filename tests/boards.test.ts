@@ -412,7 +412,7 @@ describe('board actions and configuration migration', () => {
       activeWorkspaceId: 'default',
     });
     expect(m4).toEqual(original);
-    expect(() => migrateWorkspaces({ configVersion: 8 }, [])).toThrow('newer');
+    expect(() => migrateWorkspaces({ configVersion: 9 }, [])).toThrow('newer');
     expect(
       migrateWorkspaces({ configVersion: 5, defaultWorkspace: 'obsolete' }, ['idea'])
         .activeWorkspaceId,

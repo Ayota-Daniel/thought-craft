@@ -445,7 +445,7 @@ try {
   await activeBoard().getByRole('heading', { name: 'This board is empty.', exact: true }).waitFor();
   assert.equal(await activeBoard().locator('.react-flow__node').count(), 0);
   const migrated = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
-  assert.equal(migrated.configVersion, 7);
+  assert.equal(migrated.configVersion, 8);
   assert.equal(migrated.activeWorkspaceId, 'default');
   assert.equal(
     migrated.entityTypes.find((type) => type.id === 'quest').properties[0].key,

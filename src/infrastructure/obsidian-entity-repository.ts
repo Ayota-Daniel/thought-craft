@@ -1,8 +1,11 @@
+import type { EntityStoryWriter } from '../application/plot-service';
+import type { StoryPosition } from '../domain/story-placement';
+import { writeStoryPlacement } from './story-placement-mapper';
 import type { WorkspaceRegistry } from '../application/workspace-registry';
 import type { RelationTypeRegistry } from '../application/relation-type-registry';
 import { getFrontMatterInfo, normalizePath, parseYaml, TFile, TFolder, type App } from 'obsidian';
 import type { EntityWriter, NewEntity } from '../application/create-entity';
-import type { EntityRelationWriter } from '../application/entity-relations';
+import type { EntityRelationWriter, RelationWriteScope } from '../application/entity-relations';
 import {
   validateNewRelation,
   validateRelation,
@@ -27,7 +30,12 @@ import { entityFromFrontmatter, writeEntityFrontmatter } from './frontmatter-map
 import { addCustomProperty, removeCustomProperty, updateCustomProperty } from './property-mapper';
 
 export class ObsidianEntityRepository
-  implements EntityWriter, EntityPropertyWriter, EntityRelationWriter, EntitySchemaValueWriter
+  implements
+    EntityWriter,
+    EntityPropertyWriter,
+    EntityRelationWriter,
+    EntitySchemaValueWriter,
+    EntityStoryWriter
 {
   private active = true;
   private revisions = new Map<string, number>();
@@ -238,7 +246,11 @@ export class ObsidianEntityRepository
     });
   }
 
-  addRelation(sourceEntityId: string, input: NewRelation): Promise<void> {
+  addRelation(
+    sourceEntityId: string,
+    input: NewRelation,
+    scope?: RelationWriteScope,
+  ): Promise<void> {
     const relation: EntityRelation = {
       id: globalThis.crypto.randomUUID(),
       type: input.type,
@@ -255,6 +267,17 @@ export class ObsidianEntityRepository
       if (!source || !target) {
         throw new Error('The target entity is no longer available.');
       }
+      if (
+        scope &&
+        (source.workspaceId !== scope.workspaceId ||
+          target.workspaceId !== scope.workspaceId ||
+          source.type !== scope.sourceType ||
+          target.type !== scope.targetType)
+      ) {
+        throw new Error(
+          'The relation endpoints changed type or Workspace. Reopen them before linking.',
+        );
+      }
       this.relationTypes.validateNew(source, target, relation.type);
       addEntityRelation(frontmatter, sourceEntityId, relation);
     });
@@ -266,9 +289,71 @@ export class ObsidianEntityRepository
     });
   }
 
+  async renameEntity(entityId: string, title: string): Promise<void> {
+    if (!title.trim()) throw new Error('Enter a name.');
+    const entity = this.index.getById(entityId);
+    const file = entity ? this.app.vault.getAbstractFileByPath(entity.filePath) : null;
+    if (!(file instanceof TFile)) throw new Error('This note is no longer available.');
+    const content = await this.app.vault.read(file);
+    const info = getFrontMatterInfo(content);
+    const current = entityFromFrontmatter(parseYaml(info.frontmatter), file.path);
+    if (current?.id !== entityId)
+      throw new Error('The note identity changed. Reopen it before renaming.');
+    const folder = file.parent?.path === '/' ? '' : (file.parent?.path ?? '');
+    const path = normalizePath(`${folder ? folder + '/' : ''}${sanitizeFilename(title)}.md`);
+    if (path !== file.path && this.app.vault.getAbstractFileByPath(path))
+      throw new Error('A note with this name already exists.');
+    if (path !== file.path) await this.app.fileManager.renameFile(file, path);
+    await this.syncFile(file);
+  }
+
+  setStoryPlacement(
+    entityId: string,
+    expected: unknown,
+    position: StoryPosition,
+    workspaceId: string,
+  ): Promise<void> {
+    return this.mutateMetadata(
+      entityId,
+      (frontmatter) => {
+        const type = frontmatter.bs_type;
+        if (
+          frontmatter.bs_workspace !== workspaceId ||
+          !['scene', 'story-section'].includes(String(type))
+        ) {
+          throw new Error('The narrative entity changed type or Workspace.');
+        }
+        const workspace = this.workspaces.get(workspaceId);
+        if (!workspace || workspace.retired || !workspace.enabledExperiences.includes('story')) {
+          throw new Error('Story is unavailable in this Workspace.');
+        }
+        if (type === 'story-section' && (position.sectionId !== null || position.order === null)) {
+          throw new Error('Story Sections need an order and cannot be nested.');
+        }
+        if (type === 'scene' && (position.sectionId === null) !== (position.order === null)) {
+          throw new Error('A placed Scene needs a Section and an order.');
+        }
+        if (position.sectionId !== null) {
+          const section = this.index.getById(position.sectionId);
+          if (
+            !section ||
+            section.type !== 'story-section' ||
+            section.workspaceId !== workspaceId ||
+            !(this.app.vault.getAbstractFileByPath(section.filePath) instanceof TFile)
+          ) {
+            throw new Error('Choose a Story Section in the same Workspace.');
+          }
+        }
+        writeStoryPlacement(frontmatter, expected, position);
+      },
+      false,
+    );
+  }
+
   private mutateMetadata(
     entityId: string,
     mutate: (frontmatter: Record<string, unknown>) => void,
+    updateTimestamp = true,
   ): Promise<void> {
     const previousWrite = this.metadataWrites.get(entityId) ?? Promise.resolve();
     const operation = previousWrite
@@ -298,7 +383,7 @@ export class ObsidianEntityRepository
               }
 
               mutate(frontmatter);
-              frontmatter.bs_updated = new Date().toISOString();
+              if (updateTimestamp) frontmatter.bs_updated = new Date().toISOString();
             },
           );
         } finally {

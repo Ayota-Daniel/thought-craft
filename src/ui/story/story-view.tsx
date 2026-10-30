@@ -1,3 +1,4 @@
+import type { PlotService } from '../../application/plot-service';
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import { createRoot, type Root } from 'react-dom/client';
 import type { StorySection } from '../../application/story-query';
@@ -14,6 +15,7 @@ export class StoryView extends ItemView {
     leaf: WorkspaceLeaf,
     private services: BoardServices,
     private commands: StoryCommands,
+    private plotService: PlotService,
   ) {
     super(leaf);
   }
@@ -42,6 +44,7 @@ export class StoryView extends ItemView {
     this.root?.render(
       <StoryApp
         services={this.services}
+        plotService={this.plotService}
         commands={this.commands}
         section={this.sections.get(workspaceId) ?? 'overview'}
         navigate={(section) => this.navigate(section)}

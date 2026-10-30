@@ -354,6 +354,8 @@ describe('concise product documentation', () => {
       'Workspaces',
       'Brainstorm',
       'Story',
+      'Plot',
+      'Plot Threads',
       'Relations',
     ]);
   });

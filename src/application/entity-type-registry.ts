@@ -26,11 +26,12 @@ function validateDefinition(definition: EntityTypeDefinition): void {
   if (typeof definition.builtIn !== 'boolean' || typeof definition.retired !== 'boolean') {
     throw new Error('Invalid type state.');
   }
-  // A pre-M7 custom plot-thread keeps its identity, schema and retirement state.
+  // Pre-existing custom Story type IDs keep their identity, schema and retirement state.
   // It occupies the reserved ID, so seeding never creates a second definition.
-  const legacyPlotThread = definition.id === 'plot-thread' && !definition.builtIn;
+  const legacyStoryType =
+    ['plot-thread', 'story-section'].includes(definition.id) && !definition.builtIn;
   if (
-    !legacyPlotThread &&
+    !legacyStoryType &&
     definition.builtIn !== Object.prototype.hasOwnProperty.call(ENTITY_TYPES, definition.id)
   ) {
     throw new Error('Built-in identity cannot be changed.');

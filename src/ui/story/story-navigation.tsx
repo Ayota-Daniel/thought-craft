@@ -7,7 +7,11 @@ export function StoryNavigation({
   section: StorySection;
   navigate: (section: StorySection) => void;
 }) {
-  const sections = [{ id: 'overview' as const, label: 'Overview' }, ...STORY_COLLECTIONS];
+  const sections = [
+    { id: 'overview' as const, label: 'Overview' },
+    { id: 'plot' as const, label: 'Plot' },
+    ...STORY_COLLECTIONS,
+  ];
   return (
     <nav className="tc-story-navigation" aria-label="Story sections">
       {sections.map((item) => (

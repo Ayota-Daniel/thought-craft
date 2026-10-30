@@ -20,7 +20,11 @@ export const STORY_COLLECTIONS = [
   { id: 'idea', label: 'Ideas', singular: 'Idea', hint: '' },
 ] as const;
 export type StoryType = (typeof STORY_COLLECTIONS)[number]['id'];
-export type StorySection = 'overview' | StoryType;
+export type StorySection = 'overview' | 'plot' | StoryType;
+export const STORY_RECOMMENDED_TYPES = [
+  ...STORY_COLLECTIONS,
+  { id: 'story-section', singular: 'Story Section' },
+] as const;
 export interface StoryOrigin {
   workspaceId: string;
   section: StorySection;

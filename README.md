@@ -1,4 +1,4 @@
-# Thought Craft — M7
+# Thought Craft — M9
 
 An Obsidian community plugin built around **Entity + Property + Relation**. Capture ideas, inspect local properties, connect entities by UUID, and create new entities from existing ones. Built-in and custom Entity Types share the same Focus View, reusable property schemas and UUID relations. Markdown remains the source of truth for entity data; Entity Type/property schemas are global vault configuration. Workspaces scope creation and Inbox, and define custom relation types. Brainstorm adds one curated spatial board per Workspace, as a view of the same Markdown entities and relations.
 
@@ -53,7 +53,7 @@ Capture uses the active Workspace. The existing Idea folder remains configurable
 
 Use **Save** after editing settings. Invalid or absolute folder paths are rejected. Changing settings does not move existing notes. The Inbox displays inbox Ideas and non-archived entities of other types in the active Workspace, wherever their notes live. Its query is not limited to the capture folder; switching Workspace does not change entity membership or close open Focus/Markdown tabs.
 
-Settings use Obsidian's `loadData` / `saveData` APIs. `data.json` contains capture settings, `configVersion: 7`, `entityTypes`, `workspaces`, `activeWorkspaceId` and optional `boards` visual state. These are definitions, UI context and board-only visual state: entity identity, values, relations and content remain in Markdown. M0–M6.6 configuration migrates without rewriting notes; missing built-ins are seeded once with no opinionated properties. Unknown configuration fields and unreadable individual type definitions are retained. A malformed type-list root or a newer configuration version blocks loading rather than overwriting configuration.
+Settings use Obsidian's `loadData` / `saveData` APIs. `data.json` contains capture settings, `configVersion: 8`, `entityTypes`, `workspaces`, `activeWorkspaceId` and optional `boards` visual state. These are definitions, UI context and board-only visual state: entity identity, values, relations and content remain in Markdown. M0–M7 configuration migrates without rewriting notes; missing built-ins are seeded once with no opinionated properties. Unknown configuration fields and unreadable individual type definitions are retained. A malformed type-list root or a newer configuration version blocks loading rather than overwriting configuration.
 
 ### Entity destinations
 
@@ -66,6 +66,7 @@ The existing `entitiesFolder` setting remains the **Idea folder**. Other entity 
 | Scene     | `Brainstorm/Scenes`     | `exploring`    |
 | Location  | `Brainstorm/Locations`  | `exploring`    |
 | Plot Thread | `Brainstorm/Plot Threads` | `exploring` |
+| Story Section | `Brainstorm/Story Sections` | `exploring` |
 | Project   | `Brainstorm/Projects`   | `exploring`    |
 
 If the Idea folder is `Custom/Captures`, Characters are created in `Custom/Characters`, and so on. If it is a single root folder such as `Ideas`, the other folders are also at the vault root. No existing notes are moved. Type Manager folder edits affect only future creations. Editing Idea’s folder name also updates the existing capture destination; its parent can be changed in capture settings. Custom types use the same folder resolver, with safe nested relative paths allowed. All valid entities are indexed wherever their files live. Inbox retains Ideas with status `inbox` and also exposes non-archived other types. Focus links and relation search remain available. Workspace membership never changes their physical folder.
@@ -143,11 +144,56 @@ Enable **Story** in **Manage workspaces → Specialized experiences**, then save
 
 **+ Scene → Create & write** creates a normal Entity and opens the native Markdown editor. Other quick creations open the existing Focus View, with Properties, Relations, Create From and Brainstorm actions. Focus opened from Story returns to that collection; this small origin context stays in memory and is cleared after restart. Opening Focus through Inbox or Brainstorm restores normal Back to inbox behavior. Story subsection is remembered per Workspace while its native view remains open.
 
-Story shares the existing Workspace Brainstorm Board, schemas and relation definitions. **Plot Thread** is the sixth built-in type, stable ID `plot-thread`, default folder `Plot Threads`, empty schema. A pre-existing custom type with that ID retains its label, folder, schema and retirement state; no duplicate or silent replacement occurs. If it is retired, restore it through Entity Type Manager. Global type seeding does not add it to existing Workspace enabled-type lists.
+Story shares the existing Workspace Brainstorm Board, schemas and relation definitions. **Plot Thread** is a built-in type added in M7, stable ID `plot-thread`, default folder `Plot Threads`, empty schema. A pre-existing custom type with that ID retains its label, folder, schema and retirement state; no duplicate or silent replacement occurs. If it is retired, restore it through Entity Type Manager. Global type seeding does not add it to existing Workspace enabled-type lists.
 
 Disabling Story hides its primary tab and tools; an already-open Story pane explains the disabled state. It never deletes notes, disables types, clears relations or changes the board. Re-enabling restores access. **Open Story** and **Create Scene** commands are available when the active Workspace has the required capability. Guide includes a concise Story topic.
 
-Thoughtcraft organizes; Obsidian writes. Plot/Story Boards, Chapters, Timeline, specialized Scene Editor and Story schema overrides remain deferred. **M8 has not been started.** See [M7 validation](docs/m7-validation.md).
+Thoughtcraft organizes; Obsidian writes. Advanced Story Board, Chapters, Timeline, specialized Scene Editor and Story schema overrides remain deferred. **M10 has not been started.** See [M7 validation](docs/m7-validation.md).
+
+## Plot — narrative structure in Markdown
+
+Within a Story-enabled Workspace, choose **Story → Plot** or **Overview → Open Plot**. Brainstorm organizes thoughts spatially; Plot organizes Scenes sequentially. It is a vertical editorial sequence, with a compact searchable/paged **Unplaced** tray and ordered Story Sections. It does not use XYFlow.
+
+Enable **Story Section** explicitly in Story setup. **+ Story Section** creates a real generic Markdown Entity (stable type `story-section`, folder `Story Sections`), with optional notes and a sparse narrative rank. A pre-existing custom definition with this ID is preserved exactly, including retirement. Existing Workspaces do not automatically enable it; migration does not create Acts or edit Scene notes.
+
+Drag a Scene before another Scene or into a Section’s append area. Drag Section headers before another header or to the end marker. Drop a Scene into Unplaced to clear its placement. Pointer movement does not save. Native action menus provide **Move to section…**, **Move earlier/later**, **Move to Unplaced**, **Write** and **Open Focus**. Section menus provide Open, Rename, Add Scene and earlier/later. A single click selects a Scene; double-click or Write opens its real Markdown note. Focus returns to Plot.
+
+**+ Scene in …** creates a generic Scene, appends it to that Section and opens native Markdown for writing. **+ Unplaced Scene** creates the same real Scene without placement. Section notes, properties, relations and Brainstorm participation use normal Focus. Renaming a Section changes its filename/title through Obsidian; Scenes continue to resolve its UUID without a placement migration.
+
+Narrative data belongs in Markdown, never a hidden configuration array:
+
+```yaml
+# On a Scene:
+bs_story:
+  section_id: '06fc0cbc-0100-4b5e-92f4-938b00cb7d08'
+  order: 2000
+
+# On a Story Section:
+bs_story:
+  order: 1000
+```
+
+Ranks start 1000 apart. A normal move writes only the moved note (midpoint, or ±1000 at an edge). If a practical gap is exhausted, only the affected Section’s Scene list is rebalanced; Section reordering rebalances Section notes only. Display numbering and the overall sequence are derived from Section rank, then Scene rank. Unplaced scenes use the existing Recently updated metadata sort, with no narrative tray order.
+
+Writes preserve all other metadata, including `bs_updated`, and the exact body. As in M7, Continue Writing also considers native file modification time: a narrative edit can therefore become the latest edited Scene. Sparse/rebalance writes share the existing per-Entity queue and check expected placement before committing. A multi-note failure reports how many notes saved and renders actual Markdown state; there is no transaction or global undo stack. If creation succeeds but placement fails, the note/path is reported and repeat Create is disabled to avoid a duplicate.
+
+Missing/deleted/cross-Workspace Section references remain untouched and show as unresolved Unplaced scenes. Reassigning repairs a valid mapping explicitly. A malformed `bs_story` container must be repaired in Markdown before changing placement; neighboring unknown keys in valid mappings remain intact. Deleting a Section never deletes or automatically rewrites its Scenes. Brainstorm coordinates, groups and membership remain independent.
+
+Title search never changes narrative placement. Unplaced defaults to 25 per page, and Section lists to 50; large lists reuse 25/50/100 pagination. All Plot search, selection and page state stays temporary. Pointer drag/drop uses native HTML events; keyboard movement uses the named native menus, not a claimed keyboard-drag sensor. Plot Guide explains these controls. See [M8 validation](docs/m8-validation.md) for the 100+ Scene scenario, accessibility limits and screenshots.
+
+Plot has one Section level. Chapters, nested hierarchy, Timeline, dedicated arcs, batch narrative movement and custom global undo remain deferred. **M10 has not been started.**
+
+## Plot Threads — developments across scenes
+
+In **Story → Plot**, expand **Plot Threads** to create or inspect the same generic `plot-thread` notes used by the Story collection. Creating a Thread uses the existing native form and opens generic Focus; Back returns to Plot. Type creation remains subject to Workspace enabling and retirement rules. Writing without Threads remains fully supported.
+
+Use a Scene’s **actions → Plot Threads…** to add/remove its associations in the compact inline panel. Membership uses ordinary **Related to** links between a Scene and a Plot Thread in the same Workspace. Both directions are readable; new associations write Scene → Related to → Thread. An existing reverse link prevents a redundant new edge. Removing membership removes the matching Related to edges only; if both directions exist, both are removed, with explicit partial-failure reporting. Custom relation kinds, Supports and provenance retain their meanings and do not count as membership. Use generic Focus to manage those relationships.
+
+Scene rows display up to two thread names and a `+N` overflow count, with full names available to assistive technology and in a tooltip. Select one or more Thread checkboxes to inspect narrative progression. **Highlight matches** retains all scenes; **Filter to matches** hides non-matches and clearly announces filtering. Multiple threads use OR matching. **Show full Plot** clears thread selection; the separate scene-title search remains independent.
+
+Progression follows canonical M8 Section/Scene order. Unplaced Scenes stay separate in the same deterministic ordering as the Unplaced tray; no narrative positions or completion percentages are invented. Filtering, selection and pagination are temporary. Associations do not write `bs_story`, touch Brainstorm layout or duplicate content. Generic relation edits retain their existing `bs_updated` behavior. Configuration remains v8, with no new migration or runtime dependency and an unchanged EntityIndex.
+
+The contextual **Understanding Plot Threads** Guide teaches Section/Scene/Thread distinctions, a mystery/relationship/conspiracy example, associations, progression and a flexible personal writing method. See [M9 validation](docs/m9-validation.md) for exact checks, evidence and limits.
 
 ## Brainstorm Board
 
@@ -397,13 +443,15 @@ npm run test:obsidian:m6
 npm run test:obsidian:m6-5
 npm run test:obsidian:m6-6
 npm run test:obsidian:m7
+npm run test:obsidian:m8
+npm run test:obsidian:m9
 ```
 
 These opt-in Linux checks open a **real Obsidian process**, using isolated application profiles and disposable vaults under `.artifacts/`. They enable only the locally built plugin. M0 covers capture and synchronization; M1 covers Focus and custom properties; M2 covers relations, Create From, generic types, malformed external entries, dangling targets and restarts. M3 covers type/schema configuration, all five value kinds, virtual defaults, legacy values, retirement, custom folders, unknown types and configuration loss/restoration. M4 covers Workspace migration/switching, creation restrictions, custom relations, cross-Workspace policies, compatibility feedback and retirement. M5 covers curated board membership, real creation, drag/keyboard placement, viewport/restarts, visual relations, Workspace isolation, external synchronization and styling. M6 covers contextual centering/neighbors, connected creation, visual groups, group movement/persistence, join/leave/removal, cleanup, theme/narrow/reduced-motion behavior and M5 migration. They do not use your normal Obsidian profile or vaults. Each closes its own test process after the run. M6.5 adds a 35-entity search/filter/batch/trash journey, multi-select picker, rectangle drag, multi-root Focus, tabs and Guide checks. M6.6 adds a 135-note pagination/popover/row/help journey. A Linux desktop session is required.
 
 Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md), [M3 validation](docs/m3-validation.md), [M4 validation](docs/m4-validation.md), [M5 validation](docs/m5-validation.md), [M6 validation](docs/m6-validation.md), [M6.5 validation](docs/m6-5-validation.md) and [M6.6 validation](docs/m6-6-validation.md) for results and manual checklists.
 
-## M7 limitations and later milestones
+## M9 limitations and later milestones
 
 Brainstorm supports one board per Workspace, free placement and basic pan/zoom. There are no named boards, nested groups, auto-layout, dedicated Parking Lot, drawing tools or full in-card editors. Group boundary resizing is deferred; use Fit group to members after changes. Card bodies/properties are intentionally omitted. Parallel labels are offset, but paths/labels are not routed around other cards; arrange cards manually. Layout persistence and Markdown persistence are separate: if placement fails after creating a note, the dialog reports its recovery path for Add existing rather than silently losing the note.
 
@@ -413,7 +461,7 @@ Focus previews Markdown; editing the body uses Obsidian’s native note editor. 
 
 Type IDs, property keys and property types cannot be changed after creation through the UI. Type/property retirement is reversible; destructive schema deletion and automatic value migrations are deliberately unavailable. Schema ordering follows insertion order; there is no drag-and-drop ordering. Incoming relations still use a scan. Externally duplicated entity UUIDs still mean one identity and need manual repair when making independent copies. Only the current Linux Obsidian version was validated; mobile, other platforms and older versions require separate checks.
 
-Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized project screens, specialized Story/Plot boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M8 has not been started.
+Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized project screens, advanced Story boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M10 has not been started.
 
 ## Files added
 

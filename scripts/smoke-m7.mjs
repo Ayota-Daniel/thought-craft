@@ -277,7 +277,7 @@ try {
     0,
   );
   const migrated = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
-  assert.equal(migrated.configVersion, 7);
+  assert.equal(migrated.configVersion, 8);
   assert.deepEqual(migrated.workspaces[0].enabledExperiences, []);
   assert.deepEqual(migrated.workspaces[0].enabledEntityTypeIds, ['idea']);
   assert.deepEqual(migrated.boards, [initialBoard]);
@@ -308,7 +308,7 @@ try {
   );
   await story().getByRole('region', { name: 'Story setup', exact: true }).scrollIntoViewIfNeeded();
   await shot('story-setup-dark.png');
-  for (const label of ['Character', 'Scene', 'Location', 'Plot Thread']) {
+  for (const label of ['Character', 'Scene', 'Location', 'Plot Thread', 'Story Section']) {
     await story()
       .getByRole('button', { name: `Enable ${label}`, exact: true })
       .click();

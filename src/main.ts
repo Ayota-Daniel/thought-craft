@@ -1,3 +1,6 @@
+import { PlotService } from './application/plot-service';
+import { projectPlot } from './application/plot-query';
+import { PlotDialog } from './ui/plot/plot-dialog';
 import { StoryView, STORY_VIEW_TYPE } from './ui/story/story-view';
 import { StoryCreateDialog } from './ui/story/story-create-dialog';
 import {
@@ -40,6 +43,8 @@ export default class ThoughtCraftPlugin extends Plugin {
   workspaces!: WorkspaceRegistry;
   relationTypes!: RelationTypeRegistry;
   boards!: WorkspaceBoardStore;
+  plot!: PlotService;
+  private plotDialog: PlotDialog | null = null;
   private workspaceManager: WorkspaceManagerModal | null = null;
   private configWrites: Promise<void> = Promise.resolve();
   private typeManager: TypeManagerModal | null = null;
@@ -119,6 +124,7 @@ export default class ThoughtCraftPlugin extends Plugin {
       this.relationTypes,
     );
     this.register(() => this.repository.dispose());
+    this.plot = new PlotService(this.entityIndex, this.repository, this.workspaces, this.registry);
     this.registerView(INBOX_VIEW_TYPE, (leaf) => {
       const view = new InboxView(
         leaf,
@@ -249,7 +255,13 @@ export default class ThoughtCraftPlugin extends Plugin {
             return file instanceof TFile ? file.stat.mtime : undefined;
           },
           guide: () => new ThoughtcraftGuide(this.app, 'Story').open(),
+          plotGuide: () => new ThoughtcraftGuide(this.app, 'Plot').open(),
+          threadGuide: () => new ThoughtcraftGuide(this.app, 'Plot Threads').open(),
+          createPlot: (type, origin, sectionId) => this.openStoryCreation(type, origin, sectionId),
+          renameSection: (id) => this.openPlotDialog(id, false),
+          chooseSection: (id) => this.openPlotDialog(id, true),
         },
+        this.plot,
       );
       this.register(() => view.disposeStory());
       return view;
@@ -357,6 +369,7 @@ export default class ThoughtCraftPlugin extends Plugin {
 
   onunload(): void {
     this.disposed = true;
+    this.plotDialog?.close();
     this.storyDialog?.close();
     this.storyTrash?.close();
     this.captureModal?.close();
@@ -425,13 +438,13 @@ export default class ThoughtCraftPlugin extends Plugin {
       .then(async () => {
         const raw: unknown = await this.loadData();
         const existing = isRecord(raw) ? raw : {};
-        if (typeof existing.configVersion === 'number' && existing.configVersion > 7) {
+        if (typeof existing.configVersion === 'number' && existing.configVersion > 8) {
           throw new Error('This configuration was created by a newer Thought Craft version.');
         }
         const next = {
           ...existing,
           ...(typeof changes === 'function' ? changes(existing) : changes),
-          configVersion: 7,
+          configVersion: 8,
         };
         await this.saveData(next);
         this.settings = settingsFromData(next);
@@ -533,35 +546,68 @@ export default class ThoughtCraftPlugin extends Plugin {
     }
   }
 
-  private openStoryCreation(type: StoryType, origin: StoryOrigin): void {
+  private openStoryCreation(
+    type: StoryType | 'story-section',
+    origin: StoryOrigin,
+    sectionId: string | null = null,
+  ): void {
     if (this.storyDialog) return;
     const workspace = this.workspaces.get(origin.workspaceId);
     if (!workspace || !storyEnabled(workspace)) return;
-    const collection = STORY_COLLECTIONS.find((item) => item.id === type)!;
+    const label =
+      type === 'story-section'
+        ? 'Story Section'
+        : STORY_COLLECTIONS.find((item) => item.id === type)!.singular;
     this.storyDialog = new StoryCreateDialog(
       this.app,
       type,
-      collection.singular,
+      label,
       workspace.label,
       async (input) => {
         const current = this.workspaces.get(workspace.id);
         if (!current || !storyEnabled(current))
           throw new Error('Story is no longer enabled in this Workspace.');
-        const entity = await createEntity(
-          input,
-          workspace.id,
-          this.repository,
-          this.registry,
-          this.workspaces,
-        );
+        const entity =
+          origin.section === 'plot' && (input.type === 'scene' || input.type === 'story-section')
+            ? await this.plot.create(workspace.id, input, sectionId)
+            : await createEntity(
+                input,
+                workspace.id,
+                this.repository,
+                this.registry,
+                this.workspaces,
+              );
         if (type === 'scene') await this.openMarkdownNote(entity.id);
-        else await this.openEntityFocus(entity.id, origin);
+        else if (type !== 'story-section') await this.openEntityFocus(entity.id, origin);
       },
       () => {
         this.storyDialog = null;
       },
     );
     this.storyDialog.open();
+  }
+
+  private openPlotDialog(entityId: string, moveScene: boolean): void {
+    if (this.plotDialog) return;
+    const entity = this.entityIndex.getById(entityId);
+    if (!entity) return;
+    const sections = projectPlot(this.entityIndex, entity.workspaceId).sections.map(
+      ({ entity }) => ({ id: entity.id, title: entity.title }),
+    );
+    this.plotDialog = new PlotDialog(
+      this.app,
+      moveScene ? `Move ${entity.title} to section` : 'Rename Story Section',
+      moveScene ? (entity.story?.sectionId ?? '') : entity.title,
+      async (value) => {
+        if (moveScene) await this.plot.moveScene(entity.workspaceId, entityId, value);
+        else await this.repository.renameEntity(entityId, value);
+      },
+      () => {
+        this.plotDialog = null;
+      },
+      moveScene ? sections : undefined,
+    );
+    this.plotDialog.open();
   }
 
   private trashStoryEntity(id: string): void {

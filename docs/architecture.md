@@ -1,4 +1,4 @@
-# Thought Craft architecture at M7
+# Thought Craft architecture at M9
 
 ## Separate responsibilities
 
@@ -25,7 +25,7 @@ These services are injected explicitly. React sends intents to the registries/re
 
 ## Configuration and migration
 
-`data.json` contains `configVersion: 7`, the existing capture folder/legacy default-workspace setting, global `entityTypes`, `workspaces`, and `activeWorkspaceId`, plus optional lazy `boards` visual state. Entity values/content/relations are never stored there.
+`data.json` contains `configVersion: 8`, the existing capture folder/legacy default-workspace setting, global `entityTypes`, `workspaces`, and `activeWorkspaceId`, plus optional lazy `boards` visual state. Entity values/content/relations are never stored there.
 
 Initialization loads global types, then performs the pure Workspace migration, constructs Workspace and relation services, and persists the migrated configuration before registering UI/rebuilding the vault index. M3 custom types/property schemas and unrelated configuration are retained. Missing `default` is seeded once with all types currently active at migration time, preserving prior creation availability. Subsequent global type creation does not automatically enable that type in existing Workspaces.
 
@@ -185,4 +185,38 @@ Focus carries an optional in-memory `StoryOrigin {workspaceId, section}` set whe
 
 The existing Brainstorm ItemView and BoardStore are shared unchanged by Story. Relations and property values use the same registries/repository queue. Story adds no recommended relation definitions automatically. Native commands expose only Open Story and Create Scene with appropriate capability checks. Guide adds one concise Story topic. Styles extend the existing Workspace/list/modal tokens, with no gradients, extra panel sidebar, animation or dependency.
 
-M8 is not started. Plot/Story Boards, Acts/Chapters, narrative ordering, Timeline, manuscript tools, Scene Editor replacement, arcs/graphs, Story schema overrides, AI and index optimizations remain deferred.
+M8 adds the Plot foundation described below, extended with optional Threads in M9. Nested Chapters, Timeline, manuscript tools, Scene Editor replacement, dedicated arcs/graphs, Story schema overrides, AI and index optimizations remain deferred.
+
+
+## M8: Plot as ordered Markdown structure
+
+`domain/story-placement.ts` defines small StoryPosition/StoryPlacement values and sparse rank arithmetic. Entity gains an optional parsed `story` projection, including raw expected data and readable issues; it gains no Scene/Section subclass. `infrastructure/story-placement-mapper.ts` parses `bs_story` tolerantly and performs narrow guarded updates. React never parses YAML. Absence means unplaced; valid Scene placement requires a Section UUID and finite order. A valid unresolved target stays in raw data and is displayed in Unplaced. A malformed mapping is read without rejecting the Entity, but editing requires native repair to avoid destroying unknown data.
+
+`story-section` seeds through the existing EntityTypeRegistry pass, with label Story Section, folder Story Sections, empty global schema and native rows icon. The pre-M7 custom-type compatibility rule extends to this ID: preserve custom configuration/retirement instead of replacing it. Configuration version is 8; the only new configuration effect is built-in seeding. Existing Workspace type arrays and Story capability remain intact, no notes are scanned for migration, and no Sections/Acts or narrative defaults are created automatically. Story setup offers explicit enabling through WorkspaceRegistry. No separate Section collection is added to secondary navigation.
+
+`projectPlot()` reads the same EntityIndex, scopes to one Workspace, orders Section Entities, resolves Scene Section references with getById and derives per-Section lists, Unplaced issues and a global sequence. It does not change EntityIndex or maintain a second index. Display numbering is a current list position, never persisted. Search/pagination happen only after the full sequence is derived, so moving to a visible anchor cannot renumber hidden filtered scenes accidentally.
+
+`planNarrativeMove()` takes a full destination list, one moved Entity and a before-UUID (or null for append). It removes the source before calculating rank. End insertion uses 1000 steps; between neighbors uses a readable integer midpoint. Zero/negative edge ranks are valid. Gaps smaller than 2 or missing/duplicate manual ranks trigger normalization of that destination list to 1000, 2000, etc., skipping unchanged neighbors. Moving across Sections does not compact the source. Section reordering uses the same helper on Section notes, never their Scene children. No opaque ranking dependency or duplicate global rank exists.
+
+`PlotService` is an application intent boundary with a small serialized queue. It validates actual Workspace/type/Section membership, calculates all intended ranks before writing, then calls EntityStoryWriter sequentially. The existing ObsidianEntityRepository implements that writer using its per-Entity queue and FileManager.processFrontMatter. It rechecks identity, current Workspace, Story capability, allowed source type and same-Workspace Section at commit. Expected raw placement prevents stale local changes from overwriting an external narrative edit. Only owned bs_story fields change; unknown mapping keys and every other frontmatter field, including bs_updated, remain intact. Body bytes remain the native API’s preserved body. Normal property/relation writes keep their existing updated-timestamp behavior.
+
+Partial multi-note failures stop immediately, report written/total count and use the index refreshed from each actual Markdown commit/rejected note. UI never optimistically presents an all-saved sequence. There is no database transaction, automatic rollback or custom undo stack. A created Entity whose placement fails remains safe and is reported through PlotCreationPlacementError; StoryCreateDialog prevents duplicate retry. Generic creation still owns identity/status/folder/content. Sections remain on Plot; placed/unplaced Scene creations open the real Markdown editor. Generic Focus origin carries plot and Back returns there. Continue Writing keeps M7’s latest-edit resolution, including native file mtime; it does not become first-unfinished Scene.
+
+`ui/plot` contains one board orchestrator, a paged Section, compact Scene card, native menus/dialog, and a small HTML drag/drop hook. Vertical Sections adapt naturally to narrow panes. Unplaced has a bounded scroll region and shared 25/50/100 paging; Section lists default to 50. The drag adapter holds only a source and highlighted target, saves only at drop and uses UUID anchors. Native pointer drag is separate from keyboard alternatives exposed by menus. XYFlow remains exclusively the spatial Brainstorm adapter. No drag dependency is added, and no Plot types enter Brainstorm models.
+
+Story Section rename calls generic repository renameEntity through native FileManager.renameFile. Stable UUID assignments need no Scene placement rewrite; Obsidian retains its normal backlink/rename preferences. Section deletion only removes the Section from the normal index; its Scenes remain safe and become unresolved until explicitly reassigned. Plot movement never touches BoardStore, groups or positions. Plot state is not persisted to plugin settings.
+
+M9 adds Thread integration below. Chapter semantics, nested hierarchy, Timeline, Character overlays, batch narrative moves, semantic completion and manuscript tooling remain deferred.
+
+
+## M9: Plot Thread membership and progression
+
+`plot-threads.ts` is a small application projection and command over generic Entities and relations. It does not import Obsidian. A same-Workspace Scene / Plot Thread pair is associated when a `related-to` edge exists in either direction. Other relation kinds retain their definitions and do not become narrative membership implicitly. New associations use Scene-owned links, and an existing link in either direction prevents adding a redundant reverse edge. This interpretation requires no new relation type, metadata container, configuration version or migration. Existing custom `plot-thread` definitions retain M7’s conflict policy.
+
+`setThreadMembership` delegates to the existing EntityRelationWriter. The writer accepts an optional RelationWriteScope to recheck expected Workspace and endpoint types inside the repository’s current metadata queue; generic callers without a scope retain prior cross-Workspace policies. The same Obsidian adapter still owns all `processFrontMatter` calls, timestamp behavior, duplicate checks, stale removal validation and index synchronization in `finally`. Removing two opposite links entails two existing per-note writes, not a new transaction: failures state the completed/total count and leave the actual remaining relation visible. Unrelated kinds and unknown metadata are preserved.
+
+`projectPlotThreads` consumes `projectPlot` for the canonical narrative sequence and Unplaced ordering. It derives membership and progression from current EntityIndex snapshots, including externally edited Markdown. No new index, parallel relationship map, narrative ranks or JSON store exists. Scene moves modify M8 placement only; Thread edits modify ordinary relations only; Brainstorm position remains independent.
+
+The Plot composes a collapsible Thread panel, searchable/paged thread choices, optional multi-selection and explicit Highlight / Filter modes. Scene indicators and progression are presentation only. The existing native creation form, generic Focus / native Markdown, Story collection, action menus, shared pagination and Guide are reused. UI transient state resets on Workspace remount/restart. Business projections/association intents remain outside React, while Obsidian persistence and menus remain in adapters/UI. This preserves the existing host boundary without attempting a Core extraction or a second Story engine.
+
+M9 validation and the exact file inventory are in [m9-validation.md](m9-validation.md). No M10 functionality is included.

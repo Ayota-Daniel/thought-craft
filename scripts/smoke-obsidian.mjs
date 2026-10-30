@@ -299,8 +299,8 @@ try {
   const settingsData = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
   assert.equal(settingsData.entitiesFolder, 'Custom/Ideas');
   assert.equal(settingsData.defaultWorkspace, 'novel');
-  assert.equal(settingsData.configVersion, 7);
-  assert.equal(settingsData.entityTypes.length, 6);
+  assert.equal(settingsData.configVersion, 8);
+  assert.equal(settingsData.entityTypes.length, 7);
   assert.equal(settingsData.entities, undefined);
   assert.match(
     await readFile(join(vault, 'Custom/Ideas/A thought in a custom workspace.md'), 'utf8'),

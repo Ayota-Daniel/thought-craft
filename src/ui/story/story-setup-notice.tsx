@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { STORY_COLLECTIONS } from '../../application/story-query';
+import { STORY_RECOMMENDED_TYPES } from '../../application/story-query';
 import type { WorkspaceRegistry } from '../../application/workspace-registry';
 import type { EntityTypeRegistry } from '../../application/entity-type-registry';
 
@@ -17,7 +17,7 @@ export function StorySetupNotice({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const workspace = workspaces.get(workspaceId)!;
-  const missing = STORY_COLLECTIONS.filter(
+  const missing = STORY_RECOMMENDED_TYPES.filter(
     (item) =>
       !workspace.enabledEntityTypeIds.includes(item.id) ||
       !types.get(item.id) ||

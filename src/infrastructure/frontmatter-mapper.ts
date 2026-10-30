@@ -1,3 +1,4 @@
+import { parseStoryPlacement } from './story-placement-mapper';
 import type { Entity, EntityStatus } from '../domain/entity';
 import { titleFromPath } from '../shared/note-path';
 import { isRecord } from '../shared/record';
@@ -52,6 +53,7 @@ export function entityFromFrontmatter(value: unknown, filePath: string): Entity 
     properties: parsedProperties.properties,
     propertyIssues: parsedProperties.issues,
     schemaValues: value.bs_schema_values,
+    ...(value.bs_story !== undefined ? { story: parseStoryPlacement(value.bs_story) } : {}),
     relations: parsedRelations.relations,
     relationIssues: parsedRelations.issues,
   });

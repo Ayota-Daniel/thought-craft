@@ -391,7 +391,7 @@ try {
   await schemaField('motivation').getByText('— Missing', { exact: true }).waitFor();
   assert.equal(await readFile(characterPath, 'utf8'), beforeSchema);
   checks.push(
-    'M2 settings migrate to six empty built-ins; Character receives a new reusable field without any Markdown rewrite.',
+    'M2 settings migrate to seven empty built-ins; Character receives a new reusable field without any Markdown rewrite.',
   );
   await setValue(character.id, 'motivation', 'Find her brother');
   const afterMotivation = await readFile(characterPath, 'utf8');
@@ -603,7 +603,7 @@ try {
   const configPath = join(pluginFolder, 'data.json');
   const savedConfig = await readFile(configPath, 'utf8');
   const config = JSON.parse(savedConfig);
-  assert.equal(config.configVersion, 7);
+  assert.equal(config.configVersion, 8);
   assert.equal(config.entityTypes.filter((type) => type.id === 'quest').length, 1);
   assert.equal(config.entities, undefined);
   assert.equal(config.bs_schema_values, undefined);

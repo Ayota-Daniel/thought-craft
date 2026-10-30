@@ -1,3 +1,5 @@
+import { PlotBoard } from '../plot/plot-board';
+import type { PlotService } from '../../application/plot-service';
 import { useEffect, useState } from 'react';
 import type { Entity } from '../../domain/entity';
 import {
@@ -26,15 +28,26 @@ export interface StoryCommands {
   trash: (id: string) => void;
   modifiedAt: (entity: Entity) => number | undefined;
   guide: () => void;
+  plotGuide: () => void;
+  threadGuide: () => void;
+  createPlot: (
+    type: 'scene' | 'story-section',
+    origin: StoryOrigin,
+    sectionId: string | null,
+  ) => void;
+  renameSection: (id: string) => void;
+  chooseSection: (id: string) => void;
 }
 
 export function StoryApp({
   services,
+  plotService,
   commands,
   section,
   navigate,
 }: {
   services: BoardServices;
+  plotService: PlotService;
   commands: StoryCommands;
   section: StorySection;
   navigate: (section: StorySection) => void;
@@ -87,6 +100,27 @@ export function StoryApp({
               modifiedAt={commands.modifiedAt}
               navigate={navigate}
               brainstorm={commands.brainstorm}
+            />
+          ) : section === 'plot' ? (
+            <PlotBoard
+              key={`plot:${workspace.id}`}
+              index={services.index}
+              workspaceId={workspace.id}
+              service={plotService}
+              writer={services.writer}
+              canCreateThread={available.some((type) => type.id === 'plot-thread')}
+              canCreateScene={available.some((type) => type.id === 'scene')}
+              canCreateSection={available.some((type) => type.id === 'story-section')}
+              commands={{
+                create: (type, sectionId) => commands.createPlot(type, origin, sectionId),
+                focus: (id) => commands.open(id, origin),
+                write: commands.write,
+                rename: commands.renameSection,
+                chooseSection: commands.chooseSection,
+                guide: commands.plotGuide,
+                threadGuide: commands.threadGuide,
+                createThread: () => commands.create('plot-thread', origin),
+              }}
             />
           ) : (
             <StoryCollection

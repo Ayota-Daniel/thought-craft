@@ -71,6 +71,7 @@ export function StoryOverview({
             </li>
           ))}
         </ul>
+        <button onClick={() => navigate('plot')}>Open Plot</button>
         <button onClick={brainstorm}>Open Brainstorm</button>
       </section>
     </>

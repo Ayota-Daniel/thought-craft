@@ -11,7 +11,7 @@ export function migrateWorkspaces(
   activeWorkspaceId: unknown;
 } {
   const saved = isRecord(data) ? data : {};
-  if (typeof saved.configVersion === 'number' && saved.configVersion > 7) {
+  if (typeof saved.configVersion === 'number' && saved.configVersion > 8) {
     throw new Error('This configuration was created by a newer Thought Craft version.');
   }
   if (saved.workspaces !== undefined) {

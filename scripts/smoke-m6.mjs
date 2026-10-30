@@ -347,7 +347,7 @@ try {
   await openBoard();
   assert.deepEqual(await saved(), { ...legacy, groups: [] });
   const config = JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8'));
-  assert.equal(config.configVersion, 7);
+  assert.equal(config.configVersion, 8);
   assert.equal(config.keep, 'original');
   assert.deepEqual(config.boards[0], { ...legacy, groups: [] });
   checks.push(
