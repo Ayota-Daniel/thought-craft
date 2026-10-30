@@ -6,5 +6,5 @@ export default defineConfig({
       obsidian: fileURLToPath(new URL('./tests/obsidian-adapter-stub.ts', import.meta.url)),
     },
   },
-  test: { include: ['tests/**/*.test.ts'], environment: 'node' },
+  test: { include: ['tests/**/*.test.ts', 'tests/**/*.test.mjs'], environment: 'node' },
 });

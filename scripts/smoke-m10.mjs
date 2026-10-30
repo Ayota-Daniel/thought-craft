@@ -1,3 +1,4 @@
+import { pinTestRuntime } from './test-runtime.mjs';
 // Integration check against a real, isolated Obsidian process (Linux).
 // No mock Obsidian runtime; all notes live in a disposable test vault.
 import assert from 'node:assert/strict';
@@ -9,14 +10,17 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const run = resolve(root, '.artifacts', `m10-${Date.now()}`);
+const validationLabel = process.env.THOUGHTCRAFT_VALIDATION_LABEL ?? 'm10';
+const distribution = resolve(process.env.THOUGHTCRAFT_DISTRIBUTION_DIR ?? root);
+const freshInstall = process.env.THOUGHTCRAFT_FRESH_INSTALL === '1';
+const run = resolve(root, '.artifacts', `${validationLabel}-${Date.now()}`);
 const vault = join(run, 'vault');
 const profile = join(run, 'profile');
 const pluginFolder = join(vault, '.obsidian', 'plugins', 'thought-craft');
 await mkdir(pluginFolder, { recursive: true });
 await mkdir(profile, { recursive: true });
 for (const file of ['main.js', 'manifest.json', 'styles.css']) {
-  await copyFile(join(root, file), join(pluginFolder, file));
+  await copyFile(join(distribution, file), join(pluginFolder, file));
 }
 await writeFile(
   join(vault, '.obsidian', 'community-plugins.json'),
@@ -48,6 +52,7 @@ const timings = {};
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function launch() {
+  await pinTestRuntime(profile);
   const server = createServer();
   await new Promise((resolve, reject) => {
     server.on('error', reject);
@@ -336,30 +341,53 @@ async function createScene(number) {
   return result;
 }
 try {
-  await writeFile(
-    join(pluginFolder, 'data.json'),
-    JSON.stringify({
-      configVersion: 8,
-      entitiesFolder: 'Brainstorm/Ideas',
-      activeWorkspaceId: 'default',
-      user_setting: 'keep',
-      workspaces: [
-        {
-          id: 'default',
-          label: 'The Glass Orchard',
-          builtIn: true,
-          retired: false,
-          enabledExperiences: [],
-          enabledEntityTypeIds: ['idea'],
-          relationTypes: [],
-        },
-      ],
-    }),
-  );
+  if (!freshInstall)
+    await writeFile(
+      join(pluginFolder, 'data.json'),
+      JSON.stringify({
+        configVersion: 8,
+        entitiesFolder: 'Brainstorm/Ideas',
+        activeWorkspaceId: 'default',
+        user_setting: 'keep',
+        workspaces: [
+          {
+            id: 'default',
+            label: 'The Glass Orchard',
+            builtIn: true,
+            retired: false,
+            enabledExperiences: [],
+            enabledEntityTypeIds: ['idea'],
+            relationTypes: [],
+          },
+        ],
+      }),
+    );
+  if (freshInstall) {
+    await assert.rejects(readFile(join(pluginFolder, 'data.json')), { code: 'ENOENT' });
+    const installedManifest = JSON.parse(
+      await readFile(join(pluginFolder, 'manifest.json'), 'utf8'),
+    );
+    assert.equal(installedManifest.minAppVersion, '1.14.5');
+    assert.equal(installedManifest.isDesktopOnly, true);
+  }
   await launch();
   await page.waitForFunction(() =>
     window.app.plugins.plugins['thought-craft'].entityIndex.isReady(),
   );
+  if (freshInstall) {
+    assert.equal(await evaluate("require('electron').ipcRenderer.sendSync('version')"), '1.14.5');
+    assert.equal(await evaluate(`${plugin}.workspaces.getActive().id`), 'default');
+    assert.deepEqual(await evaluate(`${plugin}.workspaces.getActive().enabledExperiences`), []);
+    assert.equal(await evaluate(`${plugin}.registry.getAll().length`), 7);
+    assert.equal(
+      JSON.parse(await readFile(join(pluginFolder, 'data.json'), 'utf8')).configVersion,
+      8,
+    );
+    await action(`${plugin}.workspaces.update('default',{label:'The Glass Orchard'})`);
+    checks.push(
+      'RC1 fresh install: no prior data.json; packaged files initialize configuration v8, Default Workspace, seven built-ins and Story disabled. Candidate compatibility manifest is loaded.',
+    );
+  }
   await action(`${plugin}.showInbox()`);
   assert.equal(
     await page
@@ -397,12 +425,60 @@ try {
   await page.keyboard.press('Escape');
   await openPlot();
   for (const label of ['Scene', 'Character', 'Location', 'Plot Thread', 'Story Section']) {
-    await story()
-      .getByRole('button', { name: `Enable ${label}`, exact: true })
+    const enable = story().getByRole('button', { name: `Enable ${label}`, exact: true });
+    if (await enable.count()) {
+      await enable.click();
+      await enable.waitFor({ state: 'detached' });
+    }
+  }
+  if (freshInstall) {
+    for (const [collection, type, title] of [
+      ['Characters', 'Character', 'Maya, keeper of memories'],
+      ['Locations', 'Location', 'The Glass Orchard'],
+    ]) {
+      await story()
+        .getByRole('navigation', { name: 'Story sections', exact: true })
+        .getByRole('button', { name: collection, exact: true })
+        .click();
+      await story()
+        .getByRole('button', { name: `+ ${type}`, exact: true })
+        .click();
+      await createDialog()
+        .getByRole('textbox', { name: type === 'Character' ? 'Name' : 'Title', exact: true })
+        .fill(title);
+      await createDialog().getByRole('button', { name: 'Create', exact: true }).click();
+      await createDialog().waitFor({ state: 'detached' });
+      await focus().getByRole('heading', { name: title, exact: true }).waitFor();
+      await focus()
+        .getByRole('button', { name: `Back to Story · ${collection}`, exact: true })
+        .click();
+    }
+    for (const [number, title, x] of [
+      [6000, 'The roots remember every theft', 1000],
+      [6001, 'A glass seed can restore a stolen memory', 1300],
+    ]) {
+      const connectedId = idFor(number);
+      await action(
+        `${plugin}.repository.createEntity({id:'${connectedId}',type:'idea',title:${JSON.stringify(title)},content:'A connected fragment.',workspaceId:'default',createdAt:new Date().toISOString(),relations:[]})`,
+      );
+      await action(
+        `${plugin}.repository.addRelation('${connectedId}',{type:'related-to',targetEntityId:'${idea.id}'})`,
+      );
+      await action(`${plugin}.boards.addEntity('default','${connectedId}',{x:${x},y:300})`);
+    }
+    await action(`${plugin}.showBrainstorm()`);
+    await page
+      .locator('.tc-brainstorm:visible')
+      .getByRole('button', { name: 'Fit', exact: true })
       .click();
-    await story()
-      .getByRole('button', { name: `Enable ${label}`, exact: true })
-      .waitFor({ state: 'detached' });
+    await delay(200);
+    await shot('glass-orchard-connected-ideas-dark.png');
+    // Keep the baseline comparison aligned with this explicit spatial addition.
+    Object.assign(initialBoard, await snapshot());
+    await openPlot();
+    checks.push(
+      'RC1 full creative project adds a Character and Location through Story forms, plus three connected Ideas and an independent Brainstorm arrangement. Automated discovery/navigation is verified; human beginner acceptance remains pending.',
+    );
   }
   const actI = await createSection('The discovery');
   const actII = await createSection('The pursuit');
@@ -695,6 +771,11 @@ try {
   );
   const report = {
     result: 'passed',
+    distribution,
+    freshInstall,
+    desktopRuntimeVersion: freshInstall
+      ? await evaluate("require('electron').ipcRenderer.sendSync('version')")
+      : undefined,
     checks,
     appVersion: (await page.title()).match(/Obsidian ([\d.]+)/)?.[1],
     vault,

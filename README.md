@@ -1,19 +1,39 @@
-# Thought Craft — M10
+# Thought Craft — Story V1 RC1 (local candidate)
 
-An Obsidian community plugin built around **Entity + Property + Relation**. Capture ideas, inspect local properties, connect entities by UUID, and create new entities from existing ones. Built-in and custom Entity Types share the same Focus View, reusable property schemas and UUID relations. Markdown remains the source of truth for entity data; Entity Type/property schemas are global vault configuration. Workspaces scope creation and Inbox, and define custom relation types. Brainstorm adds one curated spatial board per Workspace, as a view of the same Markdown entities and relations.
+**Donner forme aux idées, quelles qu’elles soient.** Thoughtcraft is a creative environment for capturing ideas freely, connecting them and adding structure progressively. Its core tools are entities, custom types/properties, relations, Workspaces and views. **Freedom before structure, with structure always available.**
 
-M10 hardens existing persistence and validates Story V1 readiness. The assessment is **Conditionally Ready** for the tested Linux desktop scope; the declared older/mobile support range remains unverified. See [M10 validation](docs/m10-validation.md) and [Story V1 readiness](docs/story-v1-readiness.md). No V1 release has been published.
+Story writing is the first specialization; Obsidian is the first host. Brainstorm is a free spatial view. Story adds Scenes, Sections and optional Plot Threads over the same Markdown notes, with native writing and generic Focus. Future Creative Environment Templates and standalone hosting are roadmap concepts, not existing capabilities.
+
+This is a **local RC1**, with manifest version still **0.1.0** pending owner choice. It has not been published or submitted. Desktop Obsidian **1.14.5 or later** is required; Linux on 1.14.5 is verified. Windows, macOS and later runtimes are unverified, and mobile is disabled. Desktop-only cannot restrict installation to Linux. See [candidate readiness](docs/story-v1-rc-readiness.md), [validation](docs/m11-validation.md) and [draft release notes](docs/story-v1-release-notes-draft.md).
+
+## Install the local candidate — no development tools needed
+
+1. Back up your vault **and its active configuration folder**. Start in a copied/test vault; see [backup and recovery](docs/backup-and-recovery.md).
+2. Obtain the locally prepared `thought-craft-story-v1-rc1-local.zip` and its SHA256SUMS from the owner. Extract it; the `thought-craft` folder contains exactly main.js, manifest.json and styles.css.
+3. Close Obsidian. Copy that folder into `<your-vault>/<active-config-folder>/plugins/`. The configuration folder is normally `.obsidian`; if you use **Override config folder**, use that actual folder. An upgrade replaces the three program files and **preserves the existing data.json**.
+4. Reopen the copied vault, allow Community plugins if required, and enable **Thought Craft** in Settings. No Node/npm installation is needed to use the plugin.
+5. Run **Thought Craft: Capture idea** from the Command Palette. Enter captures, Shift+Enter adds a line. Open the Inbox row to develop it in Focus or choose Open Markdown note to write.
+
+To reproduce the artifact as a developer: `npm ci`, then `npm run package:candidate` (Node 22+, npm and the system `zip` utility). Output lives under ignored `.artifacts/releases/story-v1-rc1-<content-hash>/`; RC1 is not a public version suffix. Build reports/checksums remain outside the install folder. Linux ZIP/UnZip are also used by the package-loading tests. For RC1 native tests, set `THOUGHTCRAFT_TEST_RUNTIME_ASAR` to a verified Obsidian 1.14.5 runtime ASAR; this seeds only the test application cache and prevents a different embedded runtime from updating midway through a scenario.
+
+## A first creative session
+
+Capture fragments before choosing a structure. Switch or create a Workspace when context becomes useful. Add entities to Brainstorm, connect ideas and arrange them freely. Focus exposes custom/local properties and source-owned relations for the same notes.
+
+When you want narrative organization, enable **Story** in Manage workspaces. A Scene is one narrative moment; a Section organizes the sequence; a Plot Thread follows a development across Scenes. Keep fragments Unplaced, write in the native Markdown editor and add Threads only if they help. Character/Location collections and your custom types remain available. Brainstorm positions never become narrative order.
+
+The Story **Guide**, **Plot guide**, **Understanding Plot Threads** link and Inbox Help provide in-app support. [Manual acceptance](docs/story-v1-manual-acceptance.md) is pending a human tester. Publication additionally requires an owner-selected project license and public version; [submission preparation](docs/community-submission-checklist.md) records the outstanding decisions.
 
 ## Develop
 
 Requires Node.js 22 or later and npm.
 
 ```sh
-npm install
+npm ci
 npm run dev          # esbuild watch mode, with inline source maps
 npm run build        # strict TypeScript check + production main.js
 npm run lint
-npm test             # focused Vitest unit tests, no Obsidian mock runtime
+npm test             # domain tests plus isolated adapter/release-tool tests
 npm run check        # build, lint and tests
 ```
 
@@ -33,7 +53,7 @@ Use a separate test vault while developing.
    npm run install:dev -- /absolute/path/to/test-vault
    ```
 
-   The helper writes only to `.obsidian/plugins/thought-craft/` in the supplied vault. It preserves existing plugin settings.
+   The helper defaults to `.obsidian/plugins/thought-craft/`. For a custom configuration folder, pass its name as the second argument: `npm run install:dev -- /absolute/path/to/test-vault .obsidian-test`. It preserves existing plugin settings.
 
 3. In that vault, open **Settings → Community plugins**, allow community plugins if required, and enable **Thought Craft**.
 4. Run **Thought Craft: Capture idea** from the Command Palette.
@@ -150,7 +170,7 @@ Story shares the existing Workspace Brainstorm Board, schemas and relation defin
 
 Disabling Story hides its primary tab and tools; an already-open Story pane explains the disabled state. It never deletes notes, disables types, clears relations or changes the board. Re-enabling restores access. **Open Story** and **Create Scene** commands are available when the active Workspace has the required capability. Guide includes a concise Story topic.
 
-Thoughtcraft organizes; Obsidian writes. Advanced Story Board, Chapters, Timeline, specialized Scene Editor and Story schema overrides remain deferred. **M11 has not been started.** See [M7 validation](docs/m7-validation.md).
+Thoughtcraft organizes; Obsidian writes. Advanced Story Board, Chapters, Timeline, specialized Scene Editor and Story schema overrides remain deferred. **M12 has not been started.** See [M7 validation](docs/m7-validation.md).
 
 ## Plot — narrative structure in Markdown
 
@@ -183,7 +203,7 @@ Missing/deleted/cross-Workspace Section references remain untouched and show as 
 
 Title search never changes narrative placement. Unplaced defaults to 25 per page, and Section lists to 50; large lists reuse 25/50/100 pagination. All Plot search, selection and page state stays temporary. Pointer drag/drop uses native HTML events; keyboard movement uses the named native menus, not a claimed keyboard-drag sensor. Plot Guide explains these controls. See [M8 validation](docs/m8-validation.md) for the 100+ Scene scenario, accessibility limits and screenshots.
 
-Plot has one Section level. Chapters, nested hierarchy, Timeline, dedicated arcs, batch narrative movement and custom global undo remain deferred. **M11 has not been started.**
+Plot has one Section level. Chapters, nested hierarchy, Timeline, dedicated arcs, batch narrative movement and custom global undo remain deferred. **M12 has not been started.**
 
 ## Plot Threads — developments across scenes
 
@@ -455,7 +475,7 @@ These opt-in Linux checks open a **real Obsidian process**, using isolated appli
 
 Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md), [M3 validation](docs/m3-validation.md), [M4 validation](docs/m4-validation.md), [M5 validation](docs/m5-validation.md), [M6 validation](docs/m6-validation.md), [M6.5 validation](docs/m6-5-validation.md) and [M6.6 validation](docs/m6-6-validation.md) for results and manual checklists.
 
-## M10 limitations and later milestones
+## Candidate limitations and later milestones
 
 Brainstorm supports one board per Workspace, free placement and basic pan/zoom. There are no named boards, nested groups, auto-layout, dedicated Parking Lot, drawing tools or full in-card editors. Group boundary resizing is deferred; use Fit group to members after changes. Card bodies/properties are intentionally omitted. Parallel labels are offset, but paths/labels are not routed around other cards; arrange cards manually. Layout persistence and Markdown persistence are separate: if placement fails after creating a note, the dialog reports its recovery path for Add existing rather than silently losing the note.
 
@@ -465,7 +485,7 @@ Focus previews Markdown; editing the body uses Obsidian’s native note editor. 
 
 Type IDs, property keys and property types cannot be changed after creation through the UI. Type/property retirement is reversible; destructive schema deletion and automatic value migrations are deliberately unavailable. Schema ordering follows insertion order; there is no drag-and-drop ordering. Incoming relations still use a scan. Externally duplicated entity UUIDs still mean one identity and need manual repair when making independent copies. Only the current Linux Obsidian version was validated; mobile, other platforms and older versions require separate checks.
 
-Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized project screens, advanced Story boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M11 has not been started.
+Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized project screens, advanced Story boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M12 has not been started.
 
 ## Files added
 

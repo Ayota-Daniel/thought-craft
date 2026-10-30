@@ -2,7 +2,7 @@
   "name": "thought-craft",
   "version": "0.1.0",
   "private": true,
-  "description": "Capture ideas as Markdown notes and find them in a live Obsidian inbox.",
+  "description": "Capture ideas, connect Markdown notes and develop stories with scenes and narrative threads.",
   "type": "module",
   "main": "main.js",
   "scripts": {
@@ -28,7 +28,11 @@
     "test:obsidian:m8": "npm run build && node scripts/smoke-m8.mjs",
     "test:obsidian:m9": "npm run build && node scripts/smoke-m9.mjs",
     "test:obsidian:m10": "npm run build && node scripts/smoke-m10.mjs",
-    "measure:story": "node scripts/measure-story.mjs"
+    "measure:story": "node scripts/measure-story.mjs",
+    "package:candidate": "npm run build && node scripts/package-candidate.mjs",
+    "test:obsidian:m11:fresh": "npm run package:candidate && node scripts/smoke-m11-fresh.mjs",
+    "test:obsidian:m11:upgrade": "npm run package:candidate && node scripts/smoke-m11-upgrade.mjs",
+    "prepare:m11:historical": "node scripts/prepare-m11-historical.mjs"
   },
   "engines": {
     "node": ">=22"

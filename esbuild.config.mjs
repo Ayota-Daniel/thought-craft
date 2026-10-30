@@ -1,5 +1,5 @@
 import * as esbuild from 'esbuild';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 
 const dependencyNotices = await readFile(
   new URL('./THIRD_PARTY_NOTICES.txt', import.meta.url),
@@ -16,6 +16,7 @@ const context = await esbuild.context({
   target: 'es2020',
   platform: 'browser',
   treeShaking: true,
+  metafile: production,
   minify: production,
   sourcemap: production ? false : 'inline',
   define: { 'process.env.NODE_ENV': JSON.stringify(production ? 'production' : 'development') },
@@ -26,7 +27,9 @@ const context = await esbuild.context({
   logLevel: 'info',
 });
 if (production) {
-  await context.rebuild();
+  const result = await context.rebuild();
+  await mkdir('.artifacts', { recursive: true });
+  await writeFile('.artifacts/production-metafile.json', JSON.stringify(result.metafile, null, 2));
   await context.dispose();
 } else {
   await context.watch();

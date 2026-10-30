@@ -2,8 +2,8 @@
   "id": "thought-craft",
   "name": "Thought Craft",
   "version": "0.1.0",
-  "minAppVersion": "1.5.0",
-  "description": "Capture ideas into Markdown and develop them from a live inbox.",
+  "minAppVersion": "1.14.5",
+  "description": "Capture ideas, connect Markdown notes and develop stories with scenes and narrative threads.",
   "author": "Thought Craft",
-  "isDesktopOnly": false
+  "isDesktopOnly": true
 }

@@ -1,3 +1,4 @@
+import { pinTestRuntime } from './test-runtime.mjs';
 // Integration check against a real, isolated Obsidian process (Linux).
 // No mock Obsidian runtime; all notes live in a disposable test vault.
 import assert from 'node:assert/strict';
@@ -45,6 +46,7 @@ const pluginErrors = [];
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function launch() {
+  await pinTestRuntime(profile);
   const server = createServer();
   await new Promise((resolve, reject) => {
     server.on('error', reject);
