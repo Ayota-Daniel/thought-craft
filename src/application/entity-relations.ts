@@ -8,6 +8,8 @@ export interface RelationWriteScope {
 }
 
 export interface EntityRelationWriter {
+  /** Storage adapters refresh before a membership no-op/retry; in-memory writers are already current. */
+  refreshEntity?(entityId: string): Promise<void>;
   addRelation(
     sourceEntityId: string,
     input: NewRelation,

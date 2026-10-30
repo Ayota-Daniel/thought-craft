@@ -503,7 +503,9 @@ try {
     .click();
   await plot()
     .getByRole('alert')
-    .filter({ hasText: 'Removed 1 of 2 related links. M9 second write failed' })
+    .filter({
+      hasText: 'Removed 1 of 2 related links with confirmed refresh. M9 second write failed',
+    })
     .waitFor();
   assert.equal(
     (await entity(idFor(1))).relations.some((r) => r.targetEntityId === mystery.id),

@@ -1,6 +1,8 @@
-# Thought Craft — M9
+# Thought Craft — M10
 
 An Obsidian community plugin built around **Entity + Property + Relation**. Capture ideas, inspect local properties, connect entities by UUID, and create new entities from existing ones. Built-in and custom Entity Types share the same Focus View, reusable property schemas and UUID relations. Markdown remains the source of truth for entity data; Entity Type/property schemas are global vault configuration. Workspaces scope creation and Inbox, and define custom relation types. Brainstorm adds one curated spatial board per Workspace, as a view of the same Markdown entities and relations.
+
+M10 hardens existing persistence and validates Story V1 readiness. The assessment is **Conditionally Ready** for the tested Linux desktop scope; the declared older/mobile support range remains unverified. See [M10 validation](docs/m10-validation.md) and [Story V1 readiness](docs/story-v1-readiness.md). No V1 release has been published.
 
 ## Develop
 
@@ -148,7 +150,7 @@ Story shares the existing Workspace Brainstorm Board, schemas and relation defin
 
 Disabling Story hides its primary tab and tools; an already-open Story pane explains the disabled state. It never deletes notes, disables types, clears relations or changes the board. Re-enabling restores access. **Open Story** and **Create Scene** commands are available when the active Workspace has the required capability. Guide includes a concise Story topic.
 
-Thoughtcraft organizes; Obsidian writes. Advanced Story Board, Chapters, Timeline, specialized Scene Editor and Story schema overrides remain deferred. **M10 has not been started.** See [M7 validation](docs/m7-validation.md).
+Thoughtcraft organizes; Obsidian writes. Advanced Story Board, Chapters, Timeline, specialized Scene Editor and Story schema overrides remain deferred. **M11 has not been started.** See [M7 validation](docs/m7-validation.md).
 
 ## Plot — narrative structure in Markdown
 
@@ -181,7 +183,7 @@ Missing/deleted/cross-Workspace Section references remain untouched and show as 
 
 Title search never changes narrative placement. Unplaced defaults to 25 per page, and Section lists to 50; large lists reuse 25/50/100 pagination. All Plot search, selection and page state stays temporary. Pointer drag/drop uses native HTML events; keyboard movement uses the named native menus, not a claimed keyboard-drag sensor. Plot Guide explains these controls. See [M8 validation](docs/m8-validation.md) for the 100+ Scene scenario, accessibility limits and screenshots.
 
-Plot has one Section level. Chapters, nested hierarchy, Timeline, dedicated arcs, batch narrative movement and custom global undo remain deferred. **M10 has not been started.**
+Plot has one Section level. Chapters, nested hierarchy, Timeline, dedicated arcs, batch narrative movement and custom global undo remain deferred. **M11 has not been started.**
 
 ## Plot Threads — developments across scenes
 
@@ -445,13 +447,15 @@ npm run test:obsidian:m6-6
 npm run test:obsidian:m7
 npm run test:obsidian:m8
 npm run test:obsidian:m9
+npm run test:obsidian:m10
+npm run measure:story
 ```
 
 These opt-in Linux checks open a **real Obsidian process**, using isolated application profiles and disposable vaults under `.artifacts/`. They enable only the locally built plugin. M0 covers capture and synchronization; M1 covers Focus and custom properties; M2 covers relations, Create From, generic types, malformed external entries, dangling targets and restarts. M3 covers type/schema configuration, all five value kinds, virtual defaults, legacy values, retirement, custom folders, unknown types and configuration loss/restoration. M4 covers Workspace migration/switching, creation restrictions, custom relations, cross-Workspace policies, compatibility feedback and retirement. M5 covers curated board membership, real creation, drag/keyboard placement, viewport/restarts, visual relations, Workspace isolation, external synchronization and styling. M6 covers contextual centering/neighbors, connected creation, visual groups, group movement/persistence, join/leave/removal, cleanup, theme/narrow/reduced-motion behavior and M5 migration. They do not use your normal Obsidian profile or vaults. Each closes its own test process after the run. M6.5 adds a 35-entity search/filter/batch/trash journey, multi-select picker, rectangle drag, multi-root Focus, tabs and Guide checks. M6.6 adds a 135-note pagination/popover/row/help journey. A Linux desktop session is required.
 
 Default executable paths are `/usr/bin/electron43` and `/usr/lib/obsidian/app.asar`. Override them with `OBSIDIAN_ELECTRON` and `OBSIDIAN_APP` if necessary. No browser download is needed: Playwright connects to the test process's local debugging endpoint. Tests require permission to launch an application and use loopback networking. See [M0 validation](docs/m0-validation.md), [M1 validation](docs/m1-validation.md), [M2 validation](docs/m2-validation.md), [M3 validation](docs/m3-validation.md), [M4 validation](docs/m4-validation.md), [M5 validation](docs/m5-validation.md), [M6 validation](docs/m6-validation.md), [M6.5 validation](docs/m6-5-validation.md) and [M6.6 validation](docs/m6-6-validation.md) for results and manual checklists.
 
-## M9 limitations and later milestones
+## M10 limitations and later milestones
 
 Brainstorm supports one board per Workspace, free placement and basic pan/zoom. There are no named boards, nested groups, auto-layout, dedicated Parking Lot, drawing tools or full in-card editors. Group boundary resizing is deferred; use Fit group to members after changes. Card bodies/properties are intentionally omitted. Parallel labels are offset, but paths/labels are not routed around other cards; arrange cards manually. Layout persistence and Markdown persistence are separate: if placement fails after creating a note, the dialog reports its recovery path for Add existing rather than silently losing the note.
 
@@ -461,7 +465,7 @@ Focus previews Markdown; editing the body uses Obsidian’s native note editor. 
 
 Type IDs, property keys and property types cannot be changed after creation through the UI. Type/property retirement is reversible; destructive schema deletion and automatic value migrations are deliberately unavailable. Schema ordering follows insertion order; there is no drag-and-drop ordering. Incoming relations still use a scan. Externally duplicated entity UUIDs still mean one identity and need manual repair when making independent copies. Only the current Linux Obsidian version was validated; mobile, other platforms and older versions require separate checks.
 
-Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized project screens, advanced Story boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M10 has not been started.
+Entity Types and Property Schemas remain **global to this vault/plugin configuration**. Workspace templates, Workspace-specific property variants/overrides, specialized project screens, advanced Story boards, timeline/graph views, evaluation profiles and formulas remain deferred. Entity movement between Workspaces is deliberately unavailable in the UI until its custom-relation compatibility workflow can be designed safely. M11 has not been started.
 
 ## Files added
 

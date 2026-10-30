@@ -1,4 +1,4 @@
-# Thought Craft architecture at M9
+# Thought Craft architecture at M10
 
 ## Separate responsibilities
 
@@ -220,3 +220,12 @@ M9 adds Thread integration below. Chapter semantics, nested hierarchy, Timeline,
 The Plot composes a collapsible Thread panel, searchable/paged thread choices, optional multi-selection and explicit Highlight / Filter modes. Scene indicators and progression are presentation only. The existing native creation form, generic Focus / native Markdown, Story collection, action menus, shared pagination and Guide are reused. UI transient state resets on Workspace remount/restart. Business projections/association intents remain outside React, while Obsidian persistence and menus remain in adapters/UI. This preserves the existing host boundary without attempting a Core extraction or a second Story engine.
 
 M9 validation and the exact file inventory are in [m9-validation.md](m9-validation.md). No M10 functionality is included.
+
+
+## M10: persistence acknowledgements and Story V1 convergence
+
+EntityRelationWriter optionally exposes refreshEntity for storage-backed freshness. Thread intents refresh both endpoints before computing membership, no-op or retry; in-memory writers already expose current state. The repository also freshly reads relationship targets inside the existing source queue before mutation, with commit-time identity/scope/file checks. Generic relation semantics and configuration v8 are unchanged.
+
+Explicit metadata writes now require a strict post-write refresh. Errors preserve both write rejection and read-back failure where applicable; uncertain persistence is reported rather than acknowledged as success. Background event synchronization retains non-fatal logging. The existing revision counter prevents delayed reads from publishing older external state. Partial removals count confirmed write/read-back acknowledgements and offer a fresh-state retry; no cross-note atomicity or global rollback is introduced.
+
+Performance probes at 20/5, 100/40 and 500/100 Scenes/Threads plus native 500/100 coverage did not justify caches, additional EntityIndex structures or virtualization. See [M10 validation](m10-validation.md) for exact measurements, fault coverage and limits, and [Story V1 readiness](story-v1-readiness.md) for portability boundaries and the conditional release assessment. No M11 or release action is included.

@@ -197,7 +197,7 @@ describe('Plot Thread membership through generic relations', () => {
       })
       .mockRejectedValueOnce(new Error('Read only'));
     await expect(context.set(thread.id, false)).rejects.toThrow(
-      'Removed 1 of 2 related links. Read only',
+      'Removed 1 of 2 related links with confirmed refresh. Read only',
     );
     expect(
       threadAssociations(context.index.getById(scene.id)!, context.index.getById(thread.id)!),

@@ -70,6 +70,9 @@ export async function setThreadMembership(
   threadId: string,
   associated: boolean,
 ): Promise<void> {
+  if (writer.refreshEntity) {
+    await Promise.all([writer.refreshEntity(sceneId), writer.refreshEntity(threadId)]);
+  }
   const scene = index.getById(sceneId);
   const thread = index.getById(threadId);
   if (
@@ -104,6 +107,8 @@ export async function setThreadMembership(
     }
   } catch (failure) {
     const reason = failure instanceof Error ? failure.message : 'Could not remove association.';
-    throw new Error(`Removed ${removed} of ${associations.length} related links. ${reason}`);
+    throw new Error(
+      `Removed ${removed} of ${associations.length} related links with confirmed refresh. ${reason} Review the remaining links in Focus, then use Remove again. A retry reads the current membership.`,
+    );
   }
 }

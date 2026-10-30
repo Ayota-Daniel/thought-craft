@@ -1781,3 +1781,19 @@ button.tc-property-remove:hover {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
 }
+
+/* User-authored titles can be long identifiers with no natural break points. */
+.tc-plot-section-header h3,
+.tc-thread-progression h3,
+.tc-thread-progression li > .tc-inspector-hint,
+.tc-thread-editing strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.tc-plot-drop-end button {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

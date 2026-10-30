@@ -67,7 +67,7 @@ export class ObsidianEntityRepository
     }
   }
 
-  async syncFile(file: TFile): Promise<void> {
+  async syncFile(file: TFile, requireRefresh = false): Promise<void> {
     const path = file.path;
     if (!this.active || file.extension.toLowerCase() !== 'md') {
       return;
@@ -82,6 +82,8 @@ export class ObsidianEntityRepository
         file.path !== path ||
         this.app.vault.getAbstractFileByPath(path) !== file
       ) {
+        if (requireRefresh)
+          throw new Error('The note changed during refresh. Review it before retrying.');
         return;
       }
       let frontmatter: unknown;
@@ -100,6 +102,10 @@ export class ObsidianEntityRepository
       // follows the entity immediately; removing the old path cannot delete it.
       this.index.upsert(entity);
     } catch (error) {
+      if (requireRefresh) {
+        if (!this.app.vault.getAbstractFileByPath(path)) this.index.removePath(path);
+        throw error;
+      }
       if (this.active && this.app.vault.getAbstractFileByPath(path)) {
         console.error(`Thought Craft: could not read ${path}.`, error);
       }
@@ -246,6 +252,16 @@ export class ObsidianEntityRepository
     });
   }
 
+  async refreshEntity(entityId: string): Promise<void> {
+    const entity = this.index.getById(entityId);
+    const file = entity ? this.app.vault.getAbstractFileByPath(entity.filePath) : null;
+    if (!(file instanceof TFile)) {
+      if (entity) this.index.removePath(entity.filePath);
+      throw new Error('This entity note is no longer available.');
+    }
+    await this.syncFile(file, true);
+  }
+
   addRelation(
     sourceEntityId: string,
     input: NewRelation,
@@ -258,29 +274,48 @@ export class ObsidianEntityRepository
       createdAt: new Date().toISOString(),
     };
 
-    return this.mutateMetadata(sourceEntityId, (frontmatter) => {
-      const source = entityFromFrontmatter(
-        frontmatter,
-        this.index.getById(sourceEntityId)?.filePath ?? 'Entity.md',
-      );
-      const target = this.index.getById(relation.targetEntityId);
-      if (!source || !target) {
-        throw new Error('The target entity is no longer available.');
-      }
-      if (
-        scope &&
-        (source.workspaceId !== scope.workspaceId ||
-          target.workspaceId !== scope.workspaceId ||
-          source.type !== scope.sourceType ||
-          target.type !== scope.targetType)
-      ) {
-        throw new Error(
-          'The relation endpoints changed type or Workspace. Reopen them before linking.',
+    return this.mutateMetadata(
+      sourceEntityId,
+      (frontmatter) => {
+        const source = entityFromFrontmatter(
+          frontmatter,
+          this.index.getById(sourceEntityId)?.filePath ?? 'Entity.md',
         );
-      }
-      this.relationTypes.validateNew(source, target, relation.type);
-      addEntityRelation(frontmatter, sourceEntityId, relation);
-    });
+        const target = this.index.getById(relation.targetEntityId);
+        if (
+          !source ||
+          !target ||
+          !(this.app.vault.getAbstractFileByPath(target.filePath) instanceof TFile)
+        ) {
+          throw new Error('The target entity is no longer available.');
+        }
+        if (
+          scope &&
+          (source.workspaceId !== scope.workspaceId ||
+            target.workspaceId !== scope.workspaceId ||
+            source.type !== scope.sourceType ||
+            target.type !== scope.targetType)
+        ) {
+          throw new Error(
+            'The relation endpoints changed type or Workspace. Reopen them before linking.',
+          );
+        }
+        this.relationTypes.validateNew(source, target, relation.type);
+        addEntityRelation(frontmatter, sourceEntityId, relation);
+      },
+      true,
+      async () => {
+        // MetadataCache can lag behind a deletion or external edit. Read the actual
+        // target inside the source queue, immediately before the source mutation.
+        const target = this.index.getById(relation.targetEntityId);
+        const file = target ? this.app.vault.getAbstractFileByPath(target.filePath) : null;
+        if (!(file instanceof TFile)) {
+          if (target) this.index.removePath(target.filePath);
+          throw new Error('The target entity is no longer available.');
+        }
+        await this.syncFile(file, true);
+      },
+    );
   }
 
   removeRelation(sourceEntityId: string, relation: EntityRelation): Promise<void> {
@@ -354,6 +389,7 @@ export class ObsidianEntityRepository
     entityId: string,
     mutate: (frontmatter: Record<string, unknown>) => void,
     updateTimestamp = true,
+    prepare?: () => Promise<void>,
   ): Promise<void> {
     const previousWrite = this.metadataWrites.get(entityId) ?? Promise.resolve();
     const operation = previousWrite
@@ -370,7 +406,10 @@ export class ObsidianEntityRepository
           throw new Error('This note is no longer available.');
         }
 
+        let writeFailure: unknown;
+        let rejected = false;
         try {
+          await prepare?.();
           await this.app.fileManager.processFrontMatter(
             file,
             (frontmatter: Record<string, unknown>) => {
@@ -386,10 +425,24 @@ export class ObsidianEntityRepository
               if (updateTimestamp) frontmatter.bs_updated = new Date().toISOString();
             },
           );
-        } finally {
-          // A rejected stale edit must also refresh the inspector from the file.
-          await this.syncFile(file);
+        } catch (failure) {
+          rejected = true;
+          writeFailure = failure;
         }
+        try {
+          // Refresh rejected edits too. A failed read must not turn an uncertain
+          // persisted result into a successful UI acknowledgement.
+          await this.syncFile(file, true);
+        } catch (refreshFailure) {
+          const reason = refreshFailure instanceof Error ? refreshFailure.message : 'Read failed.';
+          const outcome = rejected
+            ? `The operation failed: ${writeFailure instanceof Error ? writeFailure.message : 'Write rejected.'}`
+            : 'Metadata may have been saved.';
+          throw new Error(
+            `${outcome} Could not refresh ${file.path}: ${reason} Reopen the note and review its current links before retrying.`,
+          );
+        }
+        if (rejected) throw writeFailure;
       });
 
     this.metadataWrites.set(entityId, operation);
